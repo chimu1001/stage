@@ -1,0 +1,1120 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Stage Manager</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;600;700&family=Noto+Serif+JP:wght@300;400;500&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg:#f8f7f4;--bg2:#ffffff;--bg3:#f2f0ec;
+      --border:#e0dcd5;--border2:#ccc8c0;
+      --text:#1a1814;--text2:#6b6560;--text3:#9b948c;
+      --accent:#2c2825;--accent2:#8b6f47;
+      --red:#c0392b;--green:#27ae60;
+      --shadow:0 1px 3px rgba(0,0,0,0.08),0 4px 16px rgba(0,0,0,0.04);
+      --shadow2:0 2px 8px rgba(0,0,0,0.10),0 8px 32px rgba(0,0,0,0.06);
+    }
+    *{box-sizing:border-box;margin:0;padding:0;}
+    body{background:var(--bg);color:var(--text);font-family:'DM Sans','Noto Serif JP',sans-serif;min-height:100vh;font-size:15px;}
+    .app{min-height:100vh;padding-bottom:80px;}
+
+    /* HEADER */
+    .header{background:var(--bg2);border-bottom:1px solid var(--border);padding:20px 24px 0;}
+    .header-inner{max-width:860px;margin:0 auto;}
+    .header-top{display:flex;align-items:baseline;gap:14px;margin-bottom:4px;flex-wrap:wrap;}
+    .header-title{font-family:'Playfair Display',serif;font-size:clamp(1.4rem,4vw,1.9rem);font-weight:700;color:var(--accent);}
+    .header-sub{font-size:0.78rem;color:var(--text3);letter-spacing:0.12em;text-transform:uppercase;}
+    .header-actions{display:flex;gap:8px;margin:12px 0 0;flex-wrap:wrap;}
+    .ghost-btn{background:none;border:1px solid var(--border2);color:var(--text2);padding:5px 14px;border-radius:20px;cursor:pointer;font-family:inherit;font-size:0.78rem;transition:all .18s;}
+    .ghost-btn:hover{border-color:var(--accent);color:var(--accent);}
+
+    /* TABS */
+    .tabs{background:var(--bg2);border-bottom:1px solid var(--border);position:sticky;top:0;z-index:100;}
+    .tabs-inner{max-width:860px;margin:0 auto;display:flex;overflow-x:auto;scrollbar-width:none;}
+    .tabs-inner::-webkit-scrollbar{display:none;}
+    .tab-btn{background:none;border:none;border-bottom:2px solid transparent;color:var(--text3);font-family:inherit;font-size:0.82rem;font-weight:500;padding:13px 16px;cursor:pointer;white-space:nowrap;transition:all .18s;}
+    .tab-btn:hover{color:var(--text);}
+    .tab-btn.active{color:var(--accent);border-bottom-color:var(--accent);}
+
+    /* SECTIONS */
+    .section{padding:24px 16px;max-width:860px;margin:0 auto;display:none !important;}
+    .section.active{display:block !important;}
+    .section-header{display:flex;justify-content:space-between;align-items:center;gap:12px;margin-bottom:18px;flex-wrap:wrap;}
+    .section-title{font-family:'Playfair Display',serif;font-size:1.15rem;font-weight:600;color:var(--accent);}
+    .search-input{flex:1;min-width:180px;background:var(--bg2);border:1px solid var(--border);color:var(--text);padding:8px 14px;border-radius:8px;font-family:inherit;font-size:0.88rem;outline:none;transition:border-color .18s;}
+    .search-input:focus{border-color:var(--accent2);}
+    .search-input::placeholder{color:var(--text3);}
+
+    /* FILTER */
+    .filter-row{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:14px;}
+    .filter-btn{background:var(--bg3);border:1px solid var(--border);color:var(--text2);padding:5px 14px;border-radius:20px;cursor:pointer;font-family:inherit;font-size:0.78rem;transition:all .18s;}
+    .filter-btn:hover{border-color:var(--accent2);color:var(--accent);}
+    .filter-btn.active{background:var(--accent);color:#fff;border-color:var(--accent);}
+
+    /* BUTTONS */
+    .add-btn{background:var(--accent);border:none;color:#fff;font-weight:500;padding:8px 18px;border-radius:8px;cursor:pointer;font-family:inherit;font-size:0.85rem;white-space:nowrap;transition:opacity .18s;}
+    .add-btn:hover{opacity:.85;}
+    .save-btn{background:var(--accent);border:none;color:#fff;font-weight:600;padding:8px 20px;border-radius:8px;cursor:pointer;font-family:inherit;font-size:0.88rem;}
+    .cancel-btn{background:none;border:1px solid var(--border);color:var(--text2);padding:8px 16px;border-radius:8px;cursor:pointer;font-family:inherit;font-size:0.88rem;}
+    .cancel-btn:hover{border-color:var(--border2);}
+    .btn-row{display:flex;gap:8px;justify-content:flex-end;}
+    .gen-btn{background:none;border:1px solid var(--border);color:var(--text2);padding:3px 10px;border-radius:12px;cursor:pointer;font-family:inherit;font-size:0.72rem;transition:all .18s;}
+    .gen-btn:hover{border-color:var(--accent2);color:var(--accent);}
+
+    /* FORM */
+    .form-card{background:var(--bg2);border:1px solid var(--border);border-radius:14px;padding:22px;margin-bottom:20px;box-shadow:var(--shadow);}
+    .form-title{font-family:'Playfair Display',serif;font-size:1rem;color:var(--accent);margin-bottom:16px;font-weight:600;}
+    .form-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:14px;}
+    @media(max-width:520px){.form-grid{grid-template-columns:1fr;}.form-group.full{grid-column:1;}}
+    .form-group{display:flex;flex-direction:column;gap:4px;}
+    .form-group.full{grid-column:1/-1;}
+    label{font-size:0.72rem;color:var(--text2);letter-spacing:0.06em;text-transform:uppercase;font-weight:500;}
+    input,select,textarea{background:var(--bg3);border:1px solid var(--border);color:var(--text);padding:8px 12px;border-radius:7px;font-family:inherit;font-size:0.88rem;outline:none;transition:border-color .18s;width:100%;}
+    input:focus,select:focus,textarea:focus{border-color:var(--accent2);background:var(--bg2);}
+    textarea{resize:vertical;}
+    select option{background:var(--bg2);}
+
+    /* PERFORMANCE SLOTS (出演回) */
+    .slot-list{display:flex;flex-direction:column;gap:6px;margin-bottom:6px;}
+    .slot-item{display:flex;gap:6px;align-items:center;}
+    .slot-item input{flex:1;}
+    .slot-remove-btn{background:none;border:1px solid var(--border);color:var(--text3);width:28px;height:28px;border-radius:6px;cursor:pointer;font-size:0.88rem;flex-shrink:0;display:flex;align-items:center;justify-content:center;transition:all .18s;}
+    .slot-remove-btn:hover{border-color:var(--red);color:var(--red);}
+    .slot-add-btn{background:none;border:1px dashed var(--border2);color:var(--accent2);padding:5px 12px;border-radius:7px;cursor:pointer;font-family:inherit;font-size:0.78rem;transition:all .18s;width:100%;text-align:center;}
+    .slot-add-btn:hover{border-color:var(--accent2);background:var(--bg3);}
+    .slot-tag{display:inline-block;background:#f0f4ff;color:#3730a3;border:1px solid #c7d2fe;border-radius:20px;padding:2px 10px;font-size:0.72rem;font-weight:500;margin:2px;}
+
+    /* CARDS */
+    .cards{display:flex;flex-direction:column;gap:10px;}
+    .card{background:var(--bg2);border:1px solid var(--border);border-radius:12px;padding:16px 18px;transition:box-shadow .18s,border-color .18s;box-shadow:var(--shadow);}
+    .card:hover{box-shadow:var(--shadow2);border-color:var(--border2);}
+    .card-top{display:flex;justify-content:space-between;align-items:flex-start;gap:10px;margin-bottom:8px;}
+    .card-title{font-family:'Playfair Display',serif;font-size:1rem;color:var(--accent);font-weight:600;line-height:1.4;}
+    .card-date{font-size:0.78rem;color:var(--text3);margin-top:2px;}
+    .card-actions{display:flex;gap:3px;flex-shrink:0;}
+    .icon-btn{background:none;border:none;cursor:pointer;padding:4px 6px;border-radius:6px;font-size:0.88rem;transition:background .18s;opacity:.6;}
+    .icon-btn:hover{background:var(--bg3);opacity:1;}
+    .card-details{display:flex;flex-wrap:wrap;gap:8px;font-size:0.78rem;color:var(--text2);margin:6px 0;}
+    .card-notes{font-size:0.84rem;color:var(--text2);line-height:1.6;white-space:pre-wrap;}
+    .info-label{font-size:0.7rem;color:var(--accent2);font-weight:600;text-transform:uppercase;letter-spacing:0.07em;margin-bottom:3px;margin-top:10px;}
+
+    /* BADGES */
+    .badge{display:inline-block;font-size:0.68rem;padding:2px 8px;border-radius:20px;margin-bottom:5px;font-weight:600;letter-spacing:0.04em;}
+    .badge-scheduled{background:#fef3c7;color:#92400e;}
+    .badge-done{background:#d1fae5;color:#065f46;}
+    .badge-cancelled{background:#fee2e2;color:#991b1b;}
+    .badge-au-open{background:#fce7f3;color:#9d174d;}
+    .badge-au-passed{background:#d1fae5;color:#065f46;}
+    .badge-au-failed{background:#fee2e2;color:#991b1b;}
+    .badge-au-pending{background:#ede9fe;color:#4c1d95;}
+
+    /* SUMMARY */
+    .summary-bar{background:var(--bg3);border:1px solid var(--border);border-radius:10px;padding:10px 16px;margin-bottom:14px;display:flex;gap:16px;flex-wrap:wrap;font-size:0.78rem;color:var(--text2);}
+
+    /* CHECK BUTTONS */
+    .check-btn{border:1px solid;padding:5px 12px;border-radius:8px;cursor:pointer;font-family:inherit;font-size:0.75rem;transition:all .18s;white-space:nowrap;}
+    .check-grid{display:flex;flex-wrap:wrap;gap:7px;margin-top:10px;}
+
+    /* COPY */
+    .copy-btn{background:var(--bg3);border:1px solid var(--border);color:var(--text2);padding:5px 12px;border-radius:6px;cursor:pointer;font-family:inherit;font-size:0.76rem;transition:all .18s;}
+    .copy-btn:hover{border-color:var(--accent2);color:var(--accent);}
+    .copy-btn.copied{background:#d1fae5;border-color:#6ee7b7;color:#065f46;}
+
+    .hidden{display:none;}
+    .empty{text-align:center;color:var(--text3);padding:48px 20px;font-size:0.88rem;}
+
+    /* DASHBOARD */
+    .dash-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:20px;}
+    @media(max-width:500px){.dash-grid{grid-template-columns:1fr;}}
+    .dash-card{background:var(--bg2);border:1px solid var(--border);border-radius:12px;padding:18px;box-shadow:var(--shadow);}
+    .dash-card-title{font-size:0.72rem;color:var(--text3);letter-spacing:0.1em;text-transform:uppercase;font-weight:500;margin-bottom:8px;}
+    .dash-card-value{font-family:'Playfair Display',serif;font-size:1.8rem;color:var(--accent);font-weight:700;}
+    .dash-card-sub{font-size:0.76rem;color:var(--text3);margin-top:4px;}
+    .dash-section-title{font-size:0.72rem;color:var(--accent2);letter-spacing:0.12em;text-transform:uppercase;font-weight:600;margin:22px 0 10px;border-bottom:1px solid var(--border);padding-bottom:6px;}
+    .dash-item{background:var(--bg2);border:1px solid var(--border);border-radius:10px;padding:12px 14px;margin-bottom:8px;display:flex;justify-content:space-between;align-items:center;gap:10px;cursor:pointer;transition:all .18s;box-shadow:var(--shadow);}
+    .dash-item:hover{border-color:var(--border2);box-shadow:var(--shadow2);}
+    .dash-item-title{font-size:0.9rem;color:var(--accent);font-weight:500;}
+    .dash-item-sub{font-size:0.76rem;color:var(--text3);margin-top:3px;}
+    .dash-item-badge{font-size:0.7rem;padding:3px 10px;border-radius:20px;white-space:nowrap;flex-shrink:0;font-weight:600;}
+
+    #img-modal{display:none;position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.8);z-index:9999;align-items:center;justify-content:center;padding:20px;}
+  </style>
+</head>
+<body>
+<div class="app">
+
+  <!-- HEADER -->
+  <div class="header">
+    <div class="header-inner">
+      <div class="header-top">
+        <div class="header-title">🎭 Stage Manager</div>
+        <div class="header-sub">舞台管理ツール</div>
+      </div>
+      <div class="header-actions">
+        <button onclick="exportData()" class="ghost-btn">📤 エクスポート</button>
+        <label class="ghost-btn" style="cursor:pointer">📥 インポート<input type="file" accept=".json" onchange="importData(event)" style="display:none"></label>
+      </div>
+    </div>
+  </div>
+
+  <!-- TABS -->
+  <div class="tabs">
+    <div class="tabs-inner">
+      <button class="tab-btn active" onclick="switchTab('dashboard',this)">🏠 ホーム</button>
+      <button class="tab-btn" onclick="switchTab('stages',this)">🎭 ステージ</button>
+      <button class="tab-btn" onclick="switchTab('customers',this)">🎟️ 観客</button>
+      <button class="tab-btn" onclick="switchTab('auditions',this)">📋 オーディション</button>
+      <button class="tab-btn" onclick="switchTab('schedule',this)">🗓️ 稽古スケジュール</button>
+      <button class="tab-btn" onclick="switchTab('templates',this)">💬 テンプレ</button>
+    </div>
+  </div>
+
+  <!-- DASHBOARD -->
+  <div id="tab-dashboard" class="section active">
+    <div id="dashboard-content"></div>
+  </div>
+
+  <!-- STAGES -->
+  <div id="tab-stages" class="section">
+    <div class="section-header">
+      <div class="filter-row" id="stage-filters" style="margin-bottom:0">
+        <button class="filter-btn active" onclick="setStageFilter('全て')">全て</button>
+        <button class="filter-btn" onclick="setStageFilter('予定')">予定</button>
+        <button class="filter-btn" onclick="setStageFilter('完了')">完了</button>
+        <button class="filter-btn" onclick="setStageFilter('キャンセル')">キャンセル</button>
+      </div>
+      <button class="add-btn" onclick="toggleForm('stage-form')">+ 追加</button>
+    </div>
+    <div id="stage-form" class="form-card hidden" style="margin-top:14px">
+      <h3 class="form-title">新しいステージ</h3>
+      <div class="form-grid">
+        <div class="form-group full"><label>タイトル *</label><input id="s-title" placeholder="公演名"></div>
+        <div class="form-group"><label>開始日 *</label><input id="s-date-start" type="date"></div>
+        <div class="form-group"><label>終了日</label><input id="s-date-end" type="date"></div>
+        <div class="form-group"><label>ステータス</label>
+          <select id="s-status"><option>予定</option><option>完了</option><option>キャンセル</option></select>
+        </div>
+        <div class="form-group"><label>公演区分</label>
+          <select id="s-category"><option value="">未設定</option><option>ミュージカル</option><option>ストレート</option><option>朗読劇</option><option>ライブ</option><option>ダンス</option><option>その他</option></select>
+        </div>
+        <div class="form-group"><label>小屋入り日</label><input id="s-move-in" type="date"></div>
+        <div class="form-group"></div>
+        <div class="form-group full"><label>会場</label><input id="s-venue" placeholder="会場名・住所"></div>
+        <div class="form-group full"><label>開場時間メモ</label><input id="s-open-time" placeholder="例: 開演の30分前、13:30開場など"></div>
+        <div class="form-group full"><label>班分け</label><input id="s-group" placeholder="Aチーム・2班・など"></div>
+        <div class="form-group full"><label style="display:flex;align-items:center;gap:8px;cursor:pointer;text-transform:none;font-size:0.88rem;font-weight:400"><input type="checkbox" id="s-ongoing" style="width:auto;accent-color:var(--accent2)"> <span>稽古中・進行中（ongoing）</span></label></div>
+
+        <!-- 出演回 -->
+        <div class="form-group full">
+          <label>出演回</label>
+          <div id="slot-list" class="slot-list"></div>
+          <button type="button" class="slot-add-btn" onclick="addSlotInput()">＋ 出演回を追加</button>
+        </div>
+
+        <div class="form-group full"><label>メモ</label><textarea id="s-notes" rows="3" placeholder="注意事項など"></textarea></div>
+        <div class="form-group full">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:5px">
+            <label>告知文</label>
+            <button type="button" onclick="generateAnnounce()" class="gen-btn">✨ 自動生成</button>
+          </div>
+          <textarea id="s-announce" rows="5" placeholder="SNS等に使う告知文..."></textarea>
+        </div>
+        <div class="form-group full">
+          <label>フライヤー画像（複数可）</label>
+          <input type="file" id="s-flyer" accept="image/*" multiple onchange="previewFlyer(event)" style="padding:6px">
+          <div id="s-flyer-preview" style="display:flex;flex-wrap:wrap;gap:8px;margin-top:8px"></div>
+        </div>
+      </div>
+      <div class="btn-row">
+        <button class="cancel-btn" onclick="cancelForm('stage-form',resetStageForm)">キャンセル</button>
+        <button class="save-btn" onclick="saveStage()">保存</button>
+      </div>
+      <input type="hidden" id="s-editing">
+    </div>
+    <div id="stage-cards" class="cards"></div>
+  </div>
+
+  <!-- CUSTOMERS -->
+  <div id="tab-customers" class="section">
+    <div class="section-header">
+      <input class="search-input" placeholder="🔍 名前で検索" oninput="renderCustomers()" id="c-search" style="min-width:120px">
+      <button class="add-btn" onclick="toggleForm('customer-form')">+ 追加</button>
+    </div>
+    <div id="customer-stage-filters" class="filter-row"></div>
+    <div id="customer-slot-filters" class="filter-row" style="margin-top:-8px"></div>
+    <div id="customer-summary" class="summary-bar hidden"></div>
+    <div id="customer-form" class="form-card hidden">
+      <h3 class="form-title">新しい観客</h3>
+      <div class="form-grid">
+        <div class="form-group"><label>お名前 *</label><input id="c-name" placeholder="山田 花子"></div>
+        <div class="form-group"><label>人数</label><input id="c-count" type="number" min="1" value="1"></div>
+        <div class="form-group full"><label>同行者</label><input id="c-companion" placeholder="山田太郎、鈴木花子..."></div>
+        <div class="form-group full"><label>連絡手段</label>
+          <select id="c-contact-method"><option value="">未設定</option><option>LINE</option><option>Instagram DM</option><option>メール</option><option>電話</option><option>その他</option></select>
+        </div>
+        <div class="form-group full"><label>観に来る公演</label>
+          <select id="c-stage" onchange="onCustomerStageChange()"><option value="">未設定</option></select>
+        </div>
+        <div class="form-group full" id="c-slot-group" style="display:none">
+          <label>出演回</label>
+          <select id="c-slot"><option value="">未設定</option></select>
+        </div>
+        <div class="form-group full"><label>支払い方法</label>
+          <select id="c-payment"><option value="">未設定</option><option>振り込み</option><option>当日窓口払い</option><option>立替(振込)</option><option>立替(paypay)</option><option>立替(手渡し)</option><option>不要</option></select>
+        </div>
+        <div class="form-group full"><label>差し入れメモ</label><input id="c-gift-note" placeholder="チョコレート、タオルなど"></div>
+        <div class="form-group full"><label>メモ</label><textarea id="c-notes" rows="2" placeholder="席の希望・招待経緯など"></textarea></div>
+      </div>
+      <div class="btn-row">
+        <button class="cancel-btn" onclick="cancelForm('customer-form',resetCustomerForm)">キャンセル</button>
+        <button class="save-btn" onclick="saveCustomer()">保存</button>
+      </div>
+      <input type="hidden" id="c-editing">
+    </div>
+    <div id="customer-cards" class="cards"></div>
+  </div>
+
+  <!-- AUDITIONS -->
+  <div id="tab-auditions" class="section">
+    <div class="section-header">
+      <input class="search-input" placeholder="🔍 オーディション名・担当者で検索" oninput="renderAuditions()" id="au-search">
+      <div style="display:flex;gap:8px">
+        <button class="add-btn" onclick="toggleForm('audition-form')">+ 手動追加</button>
+      </div>
+    </div>
+    <div class="filter-row" id="audition-filters">
+      <button class="filter-btn active" onclick="setAuditionFilter('全て')">全て</button>
+      <button class="filter-btn" onclick="setAuditionFilter('書類審査中')">書類審査中</button>
+      <button class="filter-btn" onclick="setAuditionFilter('実技審査中')">実技審査中</button>
+      <button class="filter-btn" onclick="setAuditionFilter('合否判定中')">合否判定中</button>
+      <button class="filter-btn" onclick="setAuditionFilter('合格')">合格</button>
+      <button class="filter-btn" onclick="setAuditionFilter('不合格')">不合格</button>
+      <button class="filter-btn" onclick="setAuditionFilter('保留')">保留</button>
+    </div>
+
+    <div id="audition-form" class="form-card hidden">
+      <h3 class="form-title">新しいオーディション</h3>
+      <div class="form-grid">
+        <div class="form-group full"><label>オーディション名 *</label><input id="au-name" placeholder="2025年春公演 オーディション"></div>
+        <div class="form-group full"><label>ノルマ・ギャラなど</label><input id="au-norma" placeholder="ノルマ5枚、ギャラ〇〇円など"></div>
+        <div class="form-group"><label>オーディション日 *</label><input id="au-date" type="date"></div>
+        <div class="form-group"><label>開始時間</label><input id="au-time" type="time"></div>
+        <div class="form-group full"><label>場所</label><input id="au-venue" placeholder="稽古場・会場名・住所"></div>
+        <div class="form-group full"><label>内容</label><textarea id="au-content" rows="3" placeholder="歌・ダンス・セリフ審査など、持参物など"></textarea></div>
+        <div class="form-group"><label>本番開始日</label><input id="au-perf-start" type="date"></div>
+        <div class="form-group"><label>本番終了日</label><input id="au-perf-end" type="date"></div>
+        <div class="form-group full"><label>稽古スケジュール</label><textarea id="au-rehearsal-sched" rows="3" placeholder="月・水・金 19:00〜22:00、など"></textarea></div>
+        <div class="form-group"><label>ステータス</label>
+          <select id="au-status"><option>書類審査中</option><option>実技審査中</option><option>合否判定中</option><option>合格</option><option>不合格</option><option>保留</option></select>
+        </div>
+        <div class="form-group"><label>審査結果日</label><input id="au-result-date" type="date"></div>
+        <div class="form-group full"><label>メモ</label><textarea id="au-notes" rows="3" placeholder="所感・注意事項など"></textarea></div>
+      </div>
+      <div class="btn-row">
+        <button class="cancel-btn" onclick="cancelForm('audition-form',resetAuditionForm)">キャンセル</button>
+        <button class="save-btn" onclick="saveAudition()">保存</button>
+      </div>
+      <input type="hidden" id="au-editing">
+    </div>
+    <div id="audition-cards" class="cards"></div>
+  </div>
+
+  <!-- SCHEDULE -->
+  <div id="tab-schedule" class="section">
+    <div class="section-header">
+      <input class="search-input" placeholder="🔍 場所・内容で検索" oninput="renderSchedule()" id="sch-search">
+      <button class="add-btn" onclick="toggleForm('schedule-form')">+ 追加</button>
+    </div>
+    <div id="schedule-stage-filters" class="filter-row"></div>
+    <div id="schedule-form" class="form-card hidden">
+      <h3 class="form-title">新しい稽古</h3>
+      <div class="form-grid">
+        <div class="form-group full"><label>公演名</label><select id="sch-stage"><option value="">未設定</option></select></div>
+        <div class="form-group"><label>日付 *</label><input id="sch-date" type="date"></div>
+        <div class="form-group"><label>場所</label><input id="sch-venue" placeholder="稽古場・スタジオ名"></div>
+        <div class="form-group"><label>開始時間</label><input id="sch-start" type="time"></div>
+        <div class="form-group"><label>終了時間</label><input id="sch-end" type="time"></div>
+        <div class="form-group"><label>遅刻の場合の入り時間</label><input id="sch-late" type="time"></div>
+        <div class="form-group"><label>早退の場合の退出時間</label><input id="sch-early-out" type="time"></div>
+        <div class="form-group full"><label>内容</label><input id="sch-content" placeholder="通し稽古・場当たり・歌稽古など"></div>
+        <div class="form-group full"><label>メモ</label><textarea id="sch-notes" rows="2" placeholder="持ち物・注意点など"></textarea></div>
+      </div>
+      <div class="btn-row">
+        <button class="cancel-btn" onclick="cancelForm('schedule-form',resetScheduleForm)">キャンセル</button>
+        <button class="save-btn" onclick="saveSchedule()">保存</button>
+      </div>
+      <input type="hidden" id="sch-editing">
+    </div>
+    <div id="schedule-cards" class="cards"></div>
+  </div>
+
+  <!-- TEMPLATES -->
+  <div id="tab-templates" class="section">
+    <div class="section-header">
+      <div class="section-title">メッセージテンプレート</div>
+      <button class="add-btn" id="template-add-btn" onclick="toggleTemplateForm()">+ 追加</button>
+    </div>
+    <div id="template-form" class="form-card hidden">
+      <h3 class="form-title">新しいテンプレート</h3>
+      <div class="form-grid">
+        <div class="form-group"><label>タイトル *</label><input id="t-title" placeholder="前日リマインド用"></div>
+        <div class="form-group"><label>カテゴリ</label>
+          <select id="t-category"><option value="">未設定</option><option>前日リマインド</option><option>当日お礼</option><option>告知</option><option>合格通知</option><option>不合格通知</option><option>その他</option></select>
+        </div>
+        <div class="form-group full"><label>メッセージ本文 *</label><textarea id="t-body" rows="6"></textarea></div>
+        <div class="form-group full"><label>メモ</label><input id="t-notes" placeholder="使用シーン・注意点など"></div>
+      </div>
+      <div class="btn-row">
+        <button class="cancel-btn" onclick="toggleTemplateForm();resetTemplateForm();">キャンセル</button>
+        <button class="save-btn" onclick="saveTemplate()">保存</button>
+      </div>
+      <input type="hidden" id="t-editing">
+    </div>
+    <p style="font-size:0.78rem;color:var(--text3);margin-bottom:14px">「コピー」ボタンでクリップボードにコピーできます</p>
+    <div id="template-cards" class="cards"></div>
+  </div>
+
+</div><!-- /app -->
+
+<!-- IMAGE MODAL -->
+<div id="img-modal" onclick="closeImageModal()" style="display:none;position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.8);z-index:9999;align-items:center;justify-content:center;padding:20px">
+  <img id="img-modal-src" style="max-width:100%;max-height:90vh;border-radius:10px;object-fit:contain">
+</div>
+
+<script>
+// ========== CORE ==========
+const KEYS={stages:'sm_stages',customers:'sm_customers',auditions:'sm_auditions',schedule:'sm_schedule',templates:'sm_templates'};
+const load=k=>{try{return JSON.parse(localStorage.getItem(k))||[];}catch{return[];}};
+const save=(k,d)=>localStorage.setItem(k,JSON.stringify(d));
+const uid=()=>Date.now().toString(36)+Math.random().toString(36).slice(2);
+const esc=s=>s?String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'):'';
+const fmtD=d=>{if(!d)return'';const t=new Date(d);return`${t.getFullYear()}/${t.getMonth()+1}/${t.getDate()}`;};
+const fmtDJP=d=>{if(!d)return'';const t=new Date(d);return`${t.getMonth()+1}/${t.getDate()}(${'日月火水木金土'[t.getDay()]})`;};
+
+let stageFilter='全て',customerStageFilter='全て',customerSlotFilter='全て',auditionFilter='全て',scheduleStageFilter='全て';
+
+function switchTab(id,btn){
+  document.querySelectorAll('.section').forEach(s=>s.classList.remove('active'));
+  document.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('active'));
+  document.getElementById('tab-'+id).classList.add('active');
+  btn.classList.add('active');
+  if(id==='dashboard')renderDashboard();
+  if(id==='stages')renderStages();
+  if(id==='customers'){populateCustomerStageSelect();renderCustomers();}
+  if(id==='auditions')renderAuditions();
+  if(id==='schedule'){populateScheduleStageSelect();renderSchedule();}
+  if(id==='templates')renderTemplates();
+}
+function toggleForm(id){document.getElementById(id).classList.toggle('hidden');}
+function cancelForm(id,fn){document.getElementById(id).classList.add('hidden');fn();}
+function closeImageModal(){document.getElementById('img-modal').style.display='none';}
+function openFlyerModal(stageId,idx){
+  const s=load(KEYS.stages).find(x=>x.id===stageId);if(!s)return;
+  const fl=s.flyers||(s.flyer?[s.flyer]:[]);
+  if(!fl[idx])return;
+  document.getElementById('img-modal-src').src=fl[idx];
+  document.getElementById('img-modal').style.display='flex';
+}
+function switchTabById(id){const btn=document.querySelector(`.tab-btn[onclick*="'${id}'"]`);if(btn)btn.click();}
+
+// ========== STAGES ==========
+// --- 出演回フォーム管理 ---
+function addSlotInput(val=''){
+  const list=document.getElementById('slot-list');
+  const idx=Date.now();
+  const div=document.createElement('div');
+  div.className='slot-item';
+  div.dataset.idx=idx;
+  div.innerHTML=`<input type="text" placeholder="例: 2/15 14:00回、Aキャスト初日" value="${esc(val)}"><button type="button" class="slot-remove-btn" onclick="removeSlot(${idx})">✕</button>`;
+  list.appendChild(div);
+}
+function removeSlot(idx){
+  const item=document.querySelector(`.slot-item[data-idx="${idx}"]`);
+  if(item)item.remove();
+}
+function getSlots(){
+  return Array.from(document.querySelectorAll('#slot-list .slot-item input')).map(i=>i.value.trim()).filter(Boolean);
+}
+function setSlots(slots){
+  document.getElementById('slot-list').innerHTML='';
+  (slots||[]).forEach(s=>addSlotInput(s));
+}
+
+function setStageFilter(f){
+  stageFilter=f;
+  document.querySelectorAll('#stage-filters .filter-btn').forEach(b=>b.classList.toggle('active',b.textContent===f));
+  renderStages();
+}
+function stageDispDate(s){
+  const ds=s.dateStart||s.date||'';const de=s.dateEnd||'';
+  if(!ds)return'';
+  if(de&&de!==ds)return`${fmtD(ds)} 〜 ${fmtD(de)}`;
+  return fmtD(ds);
+}
+function generateAnnounce(){
+  const title=document.getElementById('s-title').value.trim();
+  const ds=document.getElementById('s-date-start').value;
+  const de=document.getElementById('s-date-end').value;
+  const venue=document.getElementById('s-venue').value.trim();
+  const ot=document.getElementById('s-open-time').value;
+  if(!title&&!ds&&!venue){alert('タイトル・日付・会場を入力してから生成してください');return;}
+  let text='';
+  if(title)text+=`【${title}】\n\n`;
+  if(ds){text+=`📅 ${fmtD(ds)}`;if(de&&de!==ds)text+=` 〜 ${fmtD(de)}`;text+='\n';}
+  if(ot)text+=`🚪 ${ot}\n`;
+  if(venue)text+=`📍 ${venue}\n`;
+  document.getElementById('s-announce').value=text.trimEnd();
+}
+function previewFlyer(event){
+  const files=Array.from(event.target.files);if(!files.length)return;
+  if(!window._pf||!Array.isArray(window._pf))window._pf=[];
+  const preview=document.getElementById('s-flyer-preview');
+  files.forEach(file=>{
+    const reader=new FileReader();
+    reader.onload=e=>{
+      window._pf.push(e.target.result);
+      const idx=window._pf.length-1;
+      const div=document.createElement('div');
+      div.style.cssText='position:relative;display:inline-block;';
+      div.innerHTML=`<img src="${e.target.result}" style="width:100px;height:100px;object-fit:cover;border-radius:8px;display:block"><button onclick="removePendingFlyer(${idx},this)" style="position:absolute;top:3px;right:3px;background:rgba(0,0,0,0.55);color:#fff;border:none;border-radius:50%;width:20px;height:20px;font-size:0.7rem;cursor:pointer;line-height:1;display:flex;align-items:center;justify-content:center">✕</button>`;
+      preview.appendChild(div);
+    };
+    reader.readAsDataURL(file);
+  });
+}
+function removePendingFlyer(idx,btn){
+  if(window._pf&&Array.isArray(window._pf))window._pf[idx]=null;
+  btn.closest('div').remove();
+}
+function resetStageForm(){
+  ['s-title','s-date-start','s-date-end','s-move-in','s-venue','s-open-time','s-group','s-notes','s-announce'].forEach(id=>document.getElementById(id).value='');
+  document.getElementById('s-category').value='';
+  document.getElementById('s-status').value='予定';
+  document.getElementById('s-ongoing').checked=false;
+  document.getElementById('s-flyer-preview').innerHTML='';
+  document.getElementById('s-flyer').value='';
+  window._pf=[];
+  document.getElementById('s-editing').value='';
+  document.getElementById('slot-list').innerHTML='';
+  document.querySelector('#stage-form .form-title').textContent='新しいステージ';
+  document.querySelector('#stage-form .save-btn').textContent='保存';
+}
+function saveStage(){
+  const title=document.getElementById('s-title').value.trim();
+  const dateStart=document.getElementById('s-date-start').value;
+  if(!title||!dateStart){alert('タイトルと開始日は必須です');return;}
+  const stages=load(KEYS.stages);
+  const eid=document.getElementById('s-editing').value;
+  const ex=eid?stages.find(s=>s.id===eid):null;
+  const item={
+    id:eid||uid(),title,dateStart,
+    dateEnd:document.getElementById('s-date-end').value,
+    status:document.getElementById('s-status').value,
+    category:document.getElementById('s-category').value,
+    venue:document.getElementById('s-venue').value,
+    ongoing:document.getElementById('s-ongoing').checked,
+    moveIn:document.getElementById('s-move-in').value,
+    openTime:document.getElementById('s-open-time').value,
+    group:document.getElementById('s-group').value,
+    slots:getSlots(),
+    notes:document.getElementById('s-notes').value,
+    announce:document.getElementById('s-announce').value,
+    flyers:(Array.isArray(window._pf)&&window._pf.some(Boolean))?window._pf.filter(Boolean):(ex?ex.flyers||[]:[])
+  };
+  window._pf=undefined;
+  if(eid){const i=stages.findIndex(s=>s.id===eid);if(i>-1)stages[i]=item;}else stages.unshift(item);
+  save(KEYS.stages,stages);
+  document.getElementById('stage-form').classList.add('hidden');
+  resetStageForm();renderStages();
+}
+function editStage(id){
+  const s=load(KEYS.stages).find(x=>x.id===id);if(!s)return;
+  document.getElementById('s-title').value=s.title;
+  document.getElementById('s-date-start').value=s.dateStart||s.date||'';
+  document.getElementById('s-date-end').value=s.dateEnd||'';
+  document.getElementById('s-status').value=s.status;
+  document.getElementById('s-category').value=s.category||'';
+  document.getElementById('s-venue').value=s.venue||'';
+  document.getElementById('s-ongoing').checked=s.ongoing||false;
+  document.getElementById('s-move-in').value=s.moveIn||'';
+  document.getElementById('s-open-time').value=s.openTime||'';
+  document.getElementById('s-group').value=s.group||'';
+  setSlots(s.slots||[]);
+  document.getElementById('s-notes').value=s.notes||'';
+  document.getElementById('s-announce').value=s.announce||'';
+  const flyerPreview=document.getElementById('s-flyer-preview');
+  flyerPreview.innerHTML='';
+  const flyerArr=s.flyers||(s.flyer?[s.flyer]:[]);
+  window._pf=[...flyerArr];
+  flyerArr.forEach((src,idx)=>{
+    const div=document.createElement('div');
+    div.style.cssText='position:relative;display:inline-block;';
+    div.innerHTML=`<img src="${src}" style="width:100px;height:100px;object-fit:cover;border-radius:8px;display:block"><button onclick="removePendingFlyer(${idx},this)" style="position:absolute;top:3px;right:3px;background:rgba(0,0,0,0.55);color:#fff;border:none;border-radius:50%;width:20px;height:20px;font-size:0.7rem;cursor:pointer;line-height:1;display:flex;align-items:center;justify-content:center">✕</button>`;
+    flyerPreview.appendChild(div);
+  });
+  document.getElementById('s-editing').value=id;
+  document.querySelector('#stage-form .form-title').textContent='✏️ 編集';
+  document.querySelector('#stage-form .save-btn').textContent='更新';
+  document.getElementById('stage-form').classList.remove('hidden');
+  document.getElementById('stage-form').scrollIntoView({behavior:'smooth'});
+}
+function deleteStage(id){
+  if(!confirm('削除しますか？'))return;
+  save(KEYS.stages,load(KEYS.stages).filter(s=>s.id!==id));renderStages();
+}
+function renderStages(){
+  const stages=load(KEYS.stages);
+  const filtered=(stageFilter==='全て'?stages:stages.filter(s=>s.status===stageFilter))
+    .sort((a,b)=>new Date(b.dateStart||b.date)-new Date(a.dateStart||a.date));
+  const el=document.getElementById('stage-cards');
+  if(!filtered.length){el.innerHTML='<div class="empty">ステージ情報がありません</div>';return;}
+  const bc={'予定':'badge-scheduled','完了':'badge-done','キャンセル':'badge-cancelled'};
+  el.innerHTML=filtered.map(s=>{
+    const slotTags=(s.slots||[]).map(sl=>`<span class="slot-tag">${esc(sl)}</span>`).join('');
+    return `<div class="card">
+      <div class="card-top">
+        <div>
+          <span class="badge ${bc[s.status]||'badge-scheduled'}">${s.status}</span>${s.ongoing?'<span class="badge" style="background:#fef3c7;color:#92400e;margin-left:4px">🔄 ongoing</span>':''}${s.category?`<span class="badge" style="background:#f0fdf4;color:#166534;margin-left:4px">${s.category}</span>`:''}
+          <h3 class="card-title">${esc(s.title)}</h3>
+          <p class="card-date">📅 ${stageDispDate(s)}</p>
+          ${s.moveIn?`<p class="card-date">🏠 小屋入り: ${fmtD(s.moveIn)}</p>`:''}
+        </div>
+        <div class="card-actions">
+          <button class="icon-btn" onclick="editStage('${s.id}')">✏️</button>
+          <button class="icon-btn" onclick="deleteStage('${s.id}')">🗑️</button>
+        </div>
+      </div>
+      <div class="card-details">
+        ${s.venue?`<span>📍 ${esc(s.venue)}</span>`:''}
+        ${s.openTime?`<span>🚪 ${s.openTime}</span>`:''}
+        ${s.group?`<span>👥 班: ${esc(s.group)}</span>`:''}
+      </div>
+      ${slotTags?`<div style="margin-top:6px"><p class="info-label">出演回</p><div style="margin-top:3px">${slotTags}</div></div>`:''}
+      ${s.notes?`<p class="card-notes" style="margin-top:8px">${esc(s.notes)}</p>`:''}
+      ${s.announce?`<div style="margin-top:10px"><p class="info-label">告知文</p><p class="card-notes" style="color:var(--text2)">${esc(s.announce)}</p></div>`:''}
+      ${(()=>{const fl=s.flyers||(s.flyer?[s.flyer]:[]);return fl.length?`<div style="margin-top:10px;display:flex;flex-wrap:wrap;gap:8px">${fl.map((f,i)=>`<div style="position:relative"><img src="${f}" style="width:100px;height:100px;object-fit:cover;border-radius:8px;cursor:pointer" onclick="openFlyerModal('${s.id}',${i})"><a href="${f}" download="flyer_${i+1}.jpg" style="display:block;text-align:center;margin-top:4px;font-size:0.7rem;color:var(--accent2);text-decoration:none">⬇️</a></div>`).join('')}</div>`:'';})()}
+    </div>`;
+  }).join('');
+}
+
+// ========== CUSTOMERS ==========
+function populateCustomerStageSelect(){
+  const stages=load(KEYS.stages);
+  document.getElementById('c-stage').innerHTML='<option value="">未設定</option>'+stages.map(s=>`<option value="${s.id}">${esc(s.title)}</option>`).join('');
+}
+// 公演選択で出演回プルダウンを更新
+function onCustomerStageChange(){
+  const stageId=document.getElementById('c-stage').value;
+  const stages=load(KEYS.stages);
+  const stage=stages.find(s=>s.id===stageId);
+  const slots=stage&&stage.slots&&stage.slots.length?stage.slots:[];
+  const slotGroup=document.getElementById('c-slot-group');
+  const slotSel=document.getElementById('c-slot');
+  if(slots.length){
+    slotSel.innerHTML='<option value="">未設定</option>'+slots.map(sl=>`<option value="${esc(sl)}">${esc(sl)}</option>`).join('');
+    slotGroup.style.display='';
+  } else {
+    slotSel.innerHTML='<option value="">未設定</option>';
+    slotGroup.style.display='none';
+  }
+}
+function resetCustomerForm(){
+  ['c-name','c-companion','c-gift-note','c-notes'].forEach(id=>document.getElementById(id).value='');
+  document.getElementById('c-count').value='1';
+  ['c-contact-method','c-payment','c-stage'].forEach(id=>document.getElementById(id).value='');
+  document.getElementById('c-slot').innerHTML='<option value="">未設定</option>';
+  document.getElementById('c-slot-group').style.display='none';
+  document.getElementById('c-editing').value='';
+  document.querySelector('#customer-form .form-title').textContent='新しい観客';
+  document.querySelector('#customer-form .save-btn').textContent='保存';
+}
+function saveCustomer(){
+  const name=document.getElementById('c-name').value.trim();
+  if(!name){alert('お名前は必須です');return;}
+  const customers=load(KEYS.customers);
+  const eid=document.getElementById('c-editing').value;
+  const ex=eid?customers.find(c=>c.id===eid):null;
+  const item={
+    id:eid||uid(),name,
+    count:parseInt(document.getElementById('c-count').value)||1,
+    companion:document.getElementById('c-companion').value,
+    contactMethod:document.getElementById('c-contact-method').value,
+    payment:document.getElementById('c-payment').value,
+    stageId:document.getElementById('c-stage').value,
+    slot:document.getElementById('c-slot').value,
+    giftNote:document.getElementById('c-gift-note').value,
+    notes:document.getElementById('c-notes').value,
+    paidDone:ex?ex.paidDone:false,
+    reminderSent:ex?ex.reminderSent:false,
+    thanksSent:ex?ex.thanksSent:false,
+    giftBought:ex?ex.giftBought:false
+  };
+  if(eid){const i=customers.findIndex(c=>c.id===eid);if(i>-1)customers[i]=item;}else customers.unshift(item);
+  save(KEYS.customers,customers);
+  document.getElementById('customer-form').classList.add('hidden');
+  resetCustomerForm();renderCustomers();
+}
+function editCustomer(id){
+  const c=load(KEYS.customers).find(x=>x.id===id);if(!c)return;
+  populateCustomerStageSelect();
+  document.getElementById('c-name').value=c.name;
+  document.getElementById('c-count').value=c.count||1;
+  document.getElementById('c-companion').value=c.companion||'';
+  document.getElementById('c-contact-method').value=c.contactMethod||'';
+  document.getElementById('c-payment').value=c.payment||'';
+  document.getElementById('c-stage').value=c.stageId||'';
+  onCustomerStageChange(); // 出演回リストを更新
+  if(c.slot)document.getElementById('c-slot').value=c.slot;
+  document.getElementById('c-gift-note').value=c.giftNote||'';
+  document.getElementById('c-notes').value=c.notes||'';
+  document.getElementById('c-editing').value=id;
+  document.querySelector('#customer-form .form-title').textContent='✏️ 編集';
+  document.querySelector('#customer-form .save-btn').textContent='更新';
+  document.getElementById('customer-form').classList.remove('hidden');
+  document.getElementById('customer-form').scrollIntoView({behavior:'smooth'});
+}
+function deleteCustomer(id){
+  if(!confirm('削除しますか？'))return;
+  save(KEYS.customers,load(KEYS.customers).filter(c=>c.id!==id));renderCustomers();
+}
+function toggleCustomerField(id,field){
+  const customers=load(KEYS.customers);
+  const i=customers.findIndex(c=>c.id===id);
+  if(i>-1){customers[i][field]=!customers[i][field];save(KEYS.customers,customers);renderCustomers();}
+}
+function setCustomerStageFilter(f){customerStageFilter=f;customerSlotFilter='全て';renderCustomers();}
+function setCustomerSlotFilter(f){customerSlotFilter=f;renderCustomers();}
+function renderCustomers(){
+  const customers=load(KEYS.customers);
+  const stages=load(KEYS.stages);
+  const search=document.getElementById('c-search').value;
+  const allStageIds=[...new Set(customers.map(c=>c.stageId).filter(Boolean))];
+  document.getElementById('customer-stage-filters').innerHTML=['全て',...allStageIds].map(id=>{
+    const label=id==='全て'?'全て':(stages.find(s=>s.id===id)?.title||id);
+    const active=customerStageFilter===id;
+    return `<button class="filter-btn${active?' active':''}" onclick="setCustomerStageFilter('${id}')">${esc(label)}</button>`;
+  }).join('');
+  // 出演回フィルター（ステージ選択時のみ表示）
+  let slotFilterHtml='';
+  if(customerStageFilter!=='全て'){
+    const selStage=stages.find(s=>s.id===customerStageFilter);
+    const slots=selStage&&selStage.slots&&selStage.slots.length?selStage.slots:[];
+    if(slots.length){
+      slotFilterHtml=['全て',...slots].map(sl=>{
+        const active=customerSlotFilter===sl;
+        return `<button class="filter-btn${active?' active':''}" style="font-size:0.72rem" onclick="setCustomerSlotFilter('${esc(sl)}')">${esc(sl)}</button>`;
+      }).join('');
+    }
+  }
+  const slotFilterEl=document.getElementById('customer-slot-filters');
+  if(slotFilterEl)slotFilterEl.innerHTML=slotFilterHtml;
+  const filtered=customers.filter(c=>{
+    const ms=!search||c.name.includes(search)||(c.companion||'').includes(search);
+    const matchStage=customerStageFilter==='全て'||c.stageId===customerStageFilter;
+    const matchSlot=customerSlotFilter==='全て'||c.slot===customerSlotFilter;
+    return ms&&matchStage&&matchSlot;
+  });
+  const totalPeople=filtered.reduce((s,c)=>s+(c.count||1),0);
+  const summary=document.getElementById('customer-summary');
+  if(filtered.length){
+    summary.classList.remove('hidden');
+    summary.innerHTML=`<span>👥 ${filtered.length}組/${totalPeople}名</span><span>💴 代済:${filtered.filter(c=>c.paidDone).length}</span><span>📩 リマインド:${filtered.filter(c=>c.reminderSent).length}</span><span>💛 お礼:${filtered.filter(c=>c.thanksSent).length}</span><span>🎁 ギフト:${filtered.filter(c=>c.giftBought).length}</span>`;
+  }else summary.classList.add('hidden');
+  const el=document.getElementById('customer-cards');
+  if(!filtered.length){el.innerHTML='<div class="empty">観客情報がありません</div>';return;}
+  el.innerHTML=filtered.map(c=>{
+    const stage=stages.find(s=>s.id===c.stageId);
+    const allDone=c.paidDone&&c.reminderSent&&c.thanksSent&&c.giftBought;
+    const checks=[
+      {field:'paidDone',done:c.paidDone,label:'💴 代済み'},
+      {field:'reminderSent',done:c.reminderSent,label:'📩 リマインド'},
+      {field:'thanksSent',done:c.thanksSent,label:'💛 お礼'},
+      {field:'giftBought',done:c.giftBought,label:'🎁 プチギフト購入'},
+    ];
+    return `<div class="card" style="border-color:${allDone?'#bbf7d0':'var(--border)'}">
+      <div class="card-top">
+        <div style="flex:1">
+          <h3 class="card-title">${esc(c.name)}${c.count>1?` <span style="color:var(--text2);font-size:0.82em;font-weight:400">（${c.count}名）</span>`:''}</h3>
+          ${c.companion?`<p class="card-date">👫 ${esc(c.companion)}</p>`:''}
+          ${c.contactMethod?`<p class="card-date">📬 ${esc(c.contactMethod)}</p>`:''}
+          ${stage?`<p class="card-date">🎭 ${esc(stage.title)}</p>`:''}
+          ${c.slot?`<p class="card-date">🎬 ${esc(c.slot)}</p>`:''}
+          ${c.payment?`<p class="card-date">💴 ${esc(c.payment)}</p>`:''}
+        </div>
+        <div class="card-actions">
+          <button class="icon-btn" onclick="editCustomer('${c.id}')">✏️</button>
+          <button class="icon-btn" onclick="deleteCustomer('${c.id}')">🗑️</button>
+        </div>
+      </div>
+      <div class="check-grid">
+        ${checks.map(ch=>`<button class="check-btn" style="background:${ch.done?'#d1fae5':'var(--bg3)'};border-color:${ch.done?'#6ee7b7':'var(--border)'};color:${ch.done?'#065f46':'var(--text2)'}" onclick="toggleCustomerField('${c.id}','${ch.field}')">${ch.done?'✅':'☐'} ${ch.label}</button>`).join('')}
+      </div>
+      ${c.giftNote?`<p class="card-notes" style="margin-top:8px;font-size:0.78rem;color:var(--text3)">🎁 差し入れ: ${esc(c.giftNote)}</p>`:''}
+      ${c.notes?`<p class="card-notes" style="margin-top:6px">${esc(c.notes)}</p>`:''}
+    </div>`;
+  }).join('');
+}
+
+// ========== AUDITIONS ==========
+function setAuditionFilter(f){
+  auditionFilter=f;
+  document.querySelectorAll('#audition-filters .filter-btn').forEach(b=>b.classList.toggle('active',b.textContent===f));
+  renderAuditions();
+}
+function resetAuditionForm(){
+  ['au-name','au-norma','au-date','au-time','au-venue','au-content','au-perf-start','au-perf-end','au-rehearsal-sched','au-result-date','au-notes'].forEach(id=>document.getElementById(id).value='');
+  document.getElementById('au-status').value='書類審査中';
+  document.getElementById('au-editing').value='';
+  document.querySelector('#audition-form .form-title').textContent='新しいオーディション';
+  document.querySelector('#audition-form .save-btn').textContent='保存';
+}
+function saveAudition(){
+  const name=document.getElementById('au-name').value.trim();
+  const date=document.getElementById('au-date').value;
+  if(!name||!date){alert('オーディション名と日程は必須です');return;}
+  const auditions=load(KEYS.auditions);
+  const eid=document.getElementById('au-editing').value;
+  const item={
+    id:eid||uid(),name,
+    norma:document.getElementById('au-norma').value,
+    date,time:document.getElementById('au-time').value,
+    venue:document.getElementById('au-venue').value,
+    content:document.getElementById('au-content').value,
+    perfStart:document.getElementById('au-perf-start').value,
+    perfEnd:document.getElementById('au-perf-end').value,
+    rehearsalSched:document.getElementById('au-rehearsal-sched').value,
+    status:document.getElementById('au-status').value,
+    resultDate:document.getElementById('au-result-date').value,
+    notes:document.getElementById('au-notes').value
+  };
+  if(eid){const i=auditions.findIndex(a=>a.id===eid);if(i>-1)auditions[i]=item;}else auditions.unshift(item);
+  save(KEYS.auditions,auditions);
+  document.getElementById('audition-form').classList.add('hidden');
+  resetAuditionForm();renderAuditions();
+}
+function editAudition(id){
+  const a=load(KEYS.auditions).find(x=>x.id===id);if(!a)return;
+  document.getElementById('au-name').value=a.name;
+  document.getElementById('au-norma').value=a.norma||'';
+  document.getElementById('au-date').value=a.date;
+  document.getElementById('au-time').value=a.time||'';
+  document.getElementById('au-venue').value=a.venue||'';
+  document.getElementById('au-content').value=a.content||'';
+  document.getElementById('au-perf-start').value=a.perfStart||'';
+  document.getElementById('au-perf-end').value=a.perfEnd||'';
+  document.getElementById('au-rehearsal-sched').value=a.rehearsalSched||'';
+  document.getElementById('au-status').value=a.status||'審査中';
+  document.getElementById('au-result-date').value=a.resultDate||'';
+  document.getElementById('au-notes').value=a.notes||'';
+  document.getElementById('au-editing').value=id;
+  document.querySelector('#audition-form .form-title').textContent='✏️ 編集';
+  document.querySelector('#audition-form .save-btn').textContent='更新';
+  document.getElementById('audition-form').classList.remove('hidden');
+  document.getElementById('audition-form').scrollIntoView({behavior:'smooth'});
+}
+function deleteAudition(id){
+  if(!confirm('削除しますか？'))return;
+  save(KEYS.auditions,load(KEYS.auditions).filter(a=>a.id!==id));renderAuditions();
+}
+function renderAuditions(){
+  const search=(document.getElementById('au-search').value||'').toLowerCase();
+  const auditions=load(KEYS.auditions).filter(a=>{
+    const mf=auditionFilter==='全て'||a.status===auditionFilter;
+    const ms=!search||a.name.toLowerCase().includes(search)||(a.contactPerson||'').toLowerCase().includes(search)||(a.venue||'').toLowerCase().includes(search);
+    return mf&&ms;
+  }).sort((a,b)=>new Date(b.date)-new Date(a.date));
+  const el=document.getElementById('audition-cards');
+  if(!auditions.length){el.innerHTML='<div class="empty">オーディション情報がありません</div>';return;}
+  const sb={'書類審査中':'badge-au-open','実技審査中':'badge-au-open','合否判定中':'badge-au-open','合格':'badge-au-passed','不合格':'badge-au-failed','保留':'badge-au-pending'};
+  el.innerHTML=auditions.map(a=>{
+    const perfStr=a.perfStart?(a.perfEnd&&a.perfEnd!==a.perfStart?`${fmtD(a.perfStart)} 〜 ${fmtD(a.perfEnd)}`:fmtD(a.perfStart)):'';
+    return `<div class="card">
+      <div class="card-top">
+        <div style="flex:1">
+          <span class="badge ${sb[a.status]||'badge-au-open'}">${a.status}</span>
+          <h3 class="card-title">${esc(a.name)}</h3>
+          <p class="card-date">📅 ${fmtD(a.date)}${a.time?' '+a.time:''}</p>
+          ${a.venue?`<p class="card-date">📍 ${esc(a.venue)}</p>`:''}
+        </div>
+        <div class="card-actions">
+          <button class="icon-btn" onclick="editAudition('${a.id}')">✏️</button>
+          <button class="icon-btn" onclick="deleteAudition('${a.id}')">🗑️</button>
+        </div>
+      </div>
+      ${a.norma?`<p class="card-date" style="margin-top:2px">💴 ${esc(a.norma)}</p>`:''}
+      ${a.content?`<div style="margin-top:6px"><p class="info-label">内容</p><p class="card-notes">${esc(a.content)}</p></div>`:''}
+      ${perfStr?`<div style="margin-top:6px"><p class="info-label">本番期間</p><p style="font-size:0.88rem">${perfStr}</p></div>`:''}
+      ${a.rehearsalSched?`<div style="margin-top:6px"><p class="info-label">稽古スケジュール</p><p class="card-notes">${esc(a.rehearsalSched)}</p></div>`:''}
+      ${a.resultDate?`<div style="margin-top:6px"><p class="info-label">結果日</p><p style="font-size:0.88rem">${fmtD(a.resultDate)}</p></div>`:''}
+      ${a.notes?`<div style="margin-top:6px"><p class="info-label">メモ</p><p class="card-notes">${esc(a.notes)}</p></div>`:''}
+    </div>`;
+  }).join('');
+}
+
+// ========== SCHEDULE ==========
+function populateScheduleStageSelect(){
+  const stages=load(KEYS.stages);
+  document.getElementById('sch-stage').innerHTML='<option value="">未設定</option>'+stages.map(s=>`<option value="${s.id}">${esc(s.title)}</option>`).join('');
+}
+function setScheduleStageFilter(f){scheduleStageFilter=f;renderSchedule();}
+function resetScheduleForm(){
+  ['sch-date','sch-venue','sch-start','sch-end','sch-late','sch-early-out','sch-content','sch-notes'].forEach(id=>document.getElementById(id).value='');
+  document.getElementById('sch-stage').value='';
+  document.getElementById('sch-editing').value='';
+  document.querySelector('#schedule-form .form-title').textContent='新しい稽古';
+  document.querySelector('#schedule-form .save-btn').textContent='保存';
+}
+function saveSchedule(){
+  const date=document.getElementById('sch-date').value;
+  if(!date){alert('日付は必須です');return;}
+  const schedules=load(KEYS.schedule);
+  const eid=document.getElementById('sch-editing').value;
+  const item={
+    id:eid||uid(),
+    stageId:document.getElementById('sch-stage').value,
+    date,venue:document.getElementById('sch-venue').value,
+    start:document.getElementById('sch-start').value,
+    end:document.getElementById('sch-end').value,
+    late:document.getElementById('sch-late').value,
+    earlyOut:document.getElementById('sch-early-out').value,
+    content:document.getElementById('sch-content').value,
+    notes:document.getElementById('sch-notes').value
+  };
+  if(eid){const i=schedules.findIndex(s=>s.id===eid);if(i>-1)schedules[i]=item;}else schedules.unshift(item);
+  save(KEYS.schedule,schedules);
+  document.getElementById('schedule-form').classList.add('hidden');
+  resetScheduleForm();renderSchedule();
+}
+function editSchedule(id){
+  const s=load(KEYS.schedule).find(x=>x.id===id);if(!s)return;
+  populateScheduleStageSelect();
+  document.getElementById('sch-stage').value=s.stageId||'';
+  document.getElementById('sch-date').value=s.date;
+  document.getElementById('sch-venue').value=s.venue||'';
+  document.getElementById('sch-start').value=s.start||'';
+  document.getElementById('sch-end').value=s.end||'';
+  document.getElementById('sch-late').value=s.late||'';
+  document.getElementById('sch-early-out').value=s.earlyOut||'';
+  document.getElementById('sch-content').value=s.content||'';
+  document.getElementById('sch-notes').value=s.notes||'';
+  document.getElementById('sch-editing').value=id;
+  document.querySelector('#schedule-form .form-title').textContent='✏️ 編集';
+  document.querySelector('#schedule-form .save-btn').textContent='更新';
+  document.getElementById('schedule-form').classList.remove('hidden');
+  document.getElementById('schedule-form').scrollIntoView({behavior:'smooth'});
+}
+function deleteSchedule(id){
+  if(!confirm('削除しますか？'))return;
+  save(KEYS.schedule,load(KEYS.schedule).filter(s=>s.id!==id));renderSchedule();
+}
+function renderSchedule(){
+  const search=(document.getElementById('sch-search').value||'').toLowerCase();
+  const stages=load(KEYS.stages);
+  const allSch=load(KEYS.schedule);
+  const allStageIds=[...new Set(allSch.map(s=>s.stageId).filter(Boolean))];
+  document.getElementById('schedule-stage-filters').innerHTML=['全て',...allStageIds].map(id=>{
+    const label=id==='全て'?'全て':(stages.find(s=>s.id===id)?.title||id);
+    const active=scheduleStageFilter===id;
+    return `<button class="filter-btn${active?' active':''}" onclick="setScheduleStageFilter('${id}')">${esc(label)}</button>`;
+  }).join('');
+  const filtered=allSch.filter(s=>{
+    const mf=scheduleStageFilter==='全て'||s.stageId===scheduleStageFilter;
+    const ms=!search||(s.venue||'').toLowerCase().includes(search)||(s.content||'').toLowerCase().includes(search)||(s.notes||'').toLowerCase().includes(search);
+    return mf&&ms;
+  }).sort((a,b)=>new Date(a.date)-new Date(b.date));
+  const el=document.getElementById('schedule-cards');
+  if(!filtered.length){el.innerHTML='<div class="empty">稽古スケジュールがありません</div>';return;}
+  const today=new Date();today.setHours(0,0,0,0);
+  el.innerHTML=filtered.map(s=>{
+    const stage=stages.find(x=>x.id===s.stageId);
+    const d=new Date(s.date);d.setHours(0,0,0,0);
+    const isPast=d<today;const isToday=d.getTime()===today.getTime();
+    return `<div class="card" style="border-left:3px solid ${isToday?'#fbbf24':isPast?'var(--border)':'var(--accent2)'};opacity:${isPast?0.65:1}">
+      <div class="card-top">
+        <div style="flex:1">
+          ${isToday?'<span class="badge" style="background:#fef9c3;color:#92400e;margin-right:4px">今日</span>':''}
+          <h3 class="card-title">${fmtDJP(s.date)}</h3>
+          ${stage?`<p class="card-date">🎭 ${esc(stage.title)}</p>`:''}
+          ${s.venue?`<p class="card-date">📍 ${esc(s.venue)}</p>`:''}
+        </div>
+        <div class="card-actions">
+          <button class="icon-btn" onclick="editSchedule('${s.id}')">✏️</button>
+          <button class="icon-btn" onclick="deleteSchedule('${s.id}')">🗑️</button>
+        </div>
+      </div>
+      <div class="card-details">
+        ${s.start||s.end?`<span>⏰ ${s.start||'?'}${s.end?' 〜 '+s.end:''}</span>`:''}
+        ${s.late?`<span style="color:#d97706">⚠️ 遅刻入り: ${s.late}</span>`:''}
+        ${s.earlyOut?`<span style="color:#d97706">⚠️ 早退: ${s.earlyOut}</span>`:''}
+      </div>
+      ${s.content?`<p style="font-size:0.88rem;color:var(--text);margin-top:2px">${esc(s.content)}</p>`:''}
+      ${s.notes?`<p class="card-notes" style="margin-top:6px">${esc(s.notes)}</p>`:''}
+    </div>`;
+  }).join('');
+}
+
+// ========== TEMPLATES ==========
+function toggleTemplateForm(){
+  const form=document.getElementById('template-form');
+  const btn=document.getElementById('template-add-btn');
+  const isHidden=form.classList.contains('hidden');
+  form.classList.toggle('hidden');btn.textContent=isHidden?'✕ 閉じる':'+ 追加';
+  if(!isHidden)resetTemplateForm();
+}
+function resetTemplateForm(){
+  ['t-title','t-body','t-notes'].forEach(id=>document.getElementById(id).value='');
+  document.getElementById('t-category').value='';
+  document.getElementById('t-editing').value='';
+  document.querySelector('#template-form .form-title').textContent='新しいテンプレート';
+  document.querySelector('#template-form .save-btn').textContent='保存';
+}
+function saveTemplate(){
+  const title=document.getElementById('t-title').value.trim();
+  const body=document.getElementById('t-body').value.trim();
+  if(!title||!body){alert('タイトルと本文は必須です');return;}
+  const templates=load(KEYS.templates);
+  const eid=document.getElementById('t-editing').value;
+  const item={id:eid||uid(),title,body,category:document.getElementById('t-category').value,notes:document.getElementById('t-notes').value};
+  if(eid){const i=templates.findIndex(t=>t.id===eid);if(i>-1)templates[i]=item;}else templates.unshift(item);
+  save(KEYS.templates,templates);
+  document.getElementById('template-form').classList.add('hidden');
+  resetTemplateForm();renderTemplates();
+}
+function editTemplate(id){
+  const t=load(KEYS.templates).find(x=>x.id===id);if(!t)return;
+  document.getElementById('t-title').value=t.title;
+  document.getElementById('t-body').value=t.body;
+  document.getElementById('t-category').value=t.category||'';
+  document.getElementById('t-notes').value=t.notes||'';
+  document.getElementById('t-editing').value=id;
+  document.querySelector('#template-form .form-title').textContent='✏️ 編集';
+  document.querySelector('#template-form .save-btn').textContent='更新';
+  document.getElementById('template-form').classList.remove('hidden');
+  document.getElementById('template-form').scrollIntoView({behavior:'smooth'});
+}
+function deleteTemplate(id){
+  if(!confirm('削除しますか？'))return;
+  save(KEYS.templates,load(KEYS.templates).filter(t=>t.id!==id));renderTemplates();
+}
+function copyTemplate(id){
+  const t=load(KEYS.templates).find(x=>x.id===id);if(!t)return;
+  const btn=document.querySelector(`[data-copy-id="${id}"]`);
+  const done=()=>{if(btn){btn.textContent='✅ コピー済';btn.classList.add('copied');setTimeout(()=>{btn.textContent='📋 コピー';btn.classList.remove('copied');},2000);}};
+  navigator.clipboard.writeText(t.body).then(done).catch(()=>{const ta=document.createElement('textarea');ta.value=t.body;document.body.appendChild(ta);ta.select();document.execCommand('copy');document.body.removeChild(ta);done();});
+}
+function renderTemplates(){
+  const templates=load(KEYS.templates);
+  const el=document.getElementById('template-cards');
+  const cc={'前日リマインド':'#2980b9','当日お礼':'#c9962a','告知':'#7d5a9b','合格通知':'#27ae60','不合格通知':'#c0392b','その他':'#6b6560'};
+  if(!templates.length){el.innerHTML='<div class="empty">テンプレートがありません</div>';return;}
+  el.innerHTML=templates.map(t=>`<div class="card">
+    <div class="card-top">
+      <div style="flex:1">
+        ${t.category?`<span class="badge" style="background:${cc[t.category]||'#6b6560'}18;color:${cc[t.category]||'#6b6560'};border:1px solid ${cc[t.category]||'#6b6560'}33">${t.category}</span>`:''}
+        <h3 class="card-title">${esc(t.title)}</h3>
+        ${t.notes?`<p class="card-date">${esc(t.notes)}</p>`:''}
+      </div>
+      <div class="card-actions">
+        <button class="icon-btn" onclick="editTemplate('${t.id}')">✏️</button>
+        <button class="icon-btn" onclick="deleteTemplate('${t.id}')">🗑️</button>
+      </div>
+    </div>
+    <pre style="font-family:inherit;font-size:0.84rem;color:var(--text2);line-height:1.6;white-space:pre-wrap;background:var(--bg3);border:1px solid var(--border);border-radius:8px;padding:12px;margin:8px 0">${esc(t.body)}</pre>
+    <div style="text-align:right"><button class="copy-btn" data-copy-id="${t.id}" onclick="copyTemplate('${t.id}')">📋 コピー</button></div>
+  </div>`).join('');
+}
+
+// ========== DASHBOARD ==========
+function renderDashboard(){
+  const stages=load(KEYS.stages);
+  const customers=load(KEYS.customers);
+  const auditions=load(KEYS.auditions);
+  const schedules=load(KEYS.schedule);
+  const today=new Date();today.setHours(0,0,0,0);
+  const dayDiff=d=>Math.ceil((new Date(d)-today)/(1000*60*60*24));
+  const upcomingStages=stages.filter(s=>s.status==='予定'&&new Date(s.dateStart||s.date)>=today).sort((a,b)=>new Date(a.dateStart||a.date)-new Date(b.dateStart||b.date));
+  const upcomingReh=schedules.filter(s=>new Date(s.date)>=today).sort((a,b)=>new Date(a.date)-new Date(b.date));
+  const pendingAud=auditions.filter(a=>['書類審査中','実技審査中','合否判定中'].includes(a.status));
+  const pendingContacts=customers.filter(c=>!c.reminderSent||!c.thanksSent);
+  let html=`<div class="dash-grid">
+    <div class="dash-card"><div class="dash-card-title">直近のステージ</div><div class="dash-card-value">${upcomingStages.length}</div><div class="dash-card-sub">${upcomingStages[0]?'次: '+fmtDJP(upcomingStages[0].dateStart||upcomingStages[0].date)+' '+upcomingStages[0].title:'予定なし'}</div></div>
+    <div class="dash-card"><div class="dash-card-title">直近の稽古</div><div class="dash-card-value">${upcomingReh.length}</div><div class="dash-card-sub">${upcomingReh[0]?'次: '+fmtDJP(upcomingReh[0].date)+(upcomingReh[0].start?' '+upcomingReh[0].start:''):'予定なし'}</div></div>
+    <div class="dash-card"><div class="dash-card-title">審査中オーディション</div><div class="dash-card-value">${pendingAud.length}</div><div class="dash-card-sub">件</div></div>
+    <div class="dash-card"><div class="dash-card-title">連絡待ち観客</div><div class="dash-card-value">${pendingContacts.length}</div><div class="dash-card-sub">組</div></div>
+  </div>`;
+  if(upcomingStages.length){
+    html+=`<div class="dash-section-title">直近のステージ</div>`;
+    upcomingStages.slice(0,3).forEach(s=>{
+      const d=dayDiff(s.dateStart||s.date);
+      const urg=d<=3?'#dc2626':d<=7?'#d97706':'#374151';
+      html+=`<div class="dash-item" onclick="switchTabById('stages')"><div class="dash-item-left"><div class="dash-item-title">${esc(s.title)}</div><div class="dash-item-sub">${stageDispDate(s)}${s.venue?' · '+esc(s.venue):''}</div></div><span class="dash-item-badge" style="background:${urg}15;color:${urg};border:1px solid ${urg}30">${d===0?'今日！':d+'日後'}</span></div>`;
+    });
+  }
+  if(upcomingReh.length){
+    html+=`<div class="dash-section-title">直近の稽古</div>`;
+    upcomingReh.slice(0,3).forEach(s=>{
+      const d=dayDiff(s.date);
+      const stage=stages.find(x=>x.id===s.stageId);
+      html+=`<div class="dash-item" onclick="switchTabById('schedule')"><div class="dash-item-left"><div class="dash-item-title">${fmtDJP(s.date)}${s.start?' '+s.start:''}${s.end?' 〜 '+s.end:''}</div><div class="dash-item-sub">${stage?esc(stage.title)+' · ':''}${s.venue?esc(s.venue):''}${s.content?' · '+esc(s.content):''}</div></div><span class="dash-item-badge" style="background:#e0e7ff;color:#3730a3;border:1px solid #c7d2fe">${d===0?'今日！':d+'日後'}</span></div>`;
+    });
+  }
+  if(pendingAud.length){
+    html+=`<div class="dash-section-title">審査中のオーディション</div>`;
+    pendingAud.slice(0,4).forEach(a=>{
+      html+=`<div class="dash-item" onclick="switchTabById('auditions')"><div class="dash-item-left"><div class="dash-item-title">${esc(a.name)}</div><div class="dash-item-sub">${fmtD(a.date)}${a.venue?' · '+esc(a.venue):''}</div></div><span class="dash-item-badge" style="background:#fce7f3;color:#9d174d;border:1px solid #fbcfe8">審査中</span></div>`;
+    });
+  }
+  if(pendingContacts.length){
+    html+=`<div class="dash-section-title">連絡が必要な観客</div>`;
+    pendingContacts.slice(0,5).forEach(c=>{
+      const stage=stages.find(s=>s.id===c.stageId);
+      const missing=[!c.reminderSent&&'リマインド',!c.thanksSent&&'お礼'].filter(Boolean).join('・');
+      html+=`<div class="dash-item" onclick="switchTabById('customers')"><div class="dash-item-left"><div class="dash-item-title">${esc(c.name)}${c.slot?` <span style="font-size:0.75em;color:var(--text3)">/ ${esc(c.slot)}</span>`:''}</div><div class="dash-item-sub">${stage?esc(stage.title)+' · ':''}${missing} 未送信</div></div><span class="dash-item-badge" style="background:#fee2e2;color:#991b1b;border:1px solid #fecaca">📩 未送信</span></div>`;
+    });
+  }
+  if(!upcomingStages.length&&!upcomingReh.length&&!pendingAud.length&&!pendingContacts.length){
+    html+=`<div style="text-align:center;padding:48px 20px;color:var(--text3)">✨ 今は予定や連絡待ちはありません<br><small>各タブからデータを追加するとここに表示されます</small></div>`;
+  }
+  const el=document.getElementById('dashboard-content');
+  if(el)el.innerHTML=html;
+}
+
+
+// ========== AI URL AUTO-FILL ==========
+
+// ========== EXPORT / IMPORT ==========
+function exportData(){
+  const data={version:3,exportedAt:new Date().toISOString(),stages:load(KEYS.stages),customers:load(KEYS.customers),auditions:load(KEYS.auditions),schedule:load(KEYS.schedule),templates:load(KEYS.templates)};
+  const blob=new Blob([JSON.stringify(data,null,2)],{type:'application/json'});
+  const a=document.createElement('a');a.href=URL.createObjectURL(blob);
+  a.download='stage-manager-'+new Date().toISOString().slice(0,10)+'.json';
+  a.click();URL.revokeObjectURL(a.href);
+}
+function importData(event){
+  const file=event.target.files[0];if(!file)return;
+  const reader=new FileReader();
+  reader.onload=e=>{
+    try{
+      const data=JSON.parse(e.target.result);
+      if(!data.version)throw new Error('invalid');
+      if(!confirm('既存のデータを上書きしてインポートしますか？\n（この操作は元に戻せません）'))return;
+      if(data.stages)save(KEYS.stages,data.stages);
+      if(data.customers)save(KEYS.customers,data.customers);
+      if(data.auditions)save(KEYS.auditions,data.auditions);
+      if(data.schedule)save(KEYS.schedule,data.schedule);
+      if(data.templates)save(KEYS.templates,data.templates);
+      renderDashboard();
+      alert('✅ インポートが完了しました！');
+    }catch{alert('❌ ファイルの読み込みに失敗しました。');}
+    event.target.value='';
+  };
+  reader.readAsText(file);
+}
+
+document.addEventListener('DOMContentLoaded',renderDashboard);
+if(document.readyState!=='loading')renderDashboard();
+</script>
+</body>
+</html>
