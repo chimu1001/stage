@@ -199,8 +199,13 @@
         <div class="form-group"><label>公演区分</label>
           <select id="s-category"><option value="">未設定</option><option>ミュージカル</option><option>ストレート</option><option>朗読劇</option><option>ライブ</option><option>ダンス</option><option>その他</option></select>
         </div>
-        <div class="form-group"><label>小屋入り日</label><input id="s-move-in" type="date"></div>
-        <div class="form-group"></div>
+        <div class="form-group"><label>小屋入り開始日</label><input id="s-move-in-start" type="date"></div>
+        <div class="form-group"><label>小屋入り終了日</label><input id="s-move-in-end" type="date"></div>
+        <div class="form-group full">
+          <label>小屋入り 日程・集合時間</label>
+          <div id="movein-slot-list" class="slot-list"></div>
+          <button type="button" class="slot-add-btn" onclick="addMoveInSlot()">＋ 日程を追加</button>
+        </div>
         <div class="form-group full"><label>会場</label><input id="s-venue" placeholder="会場名・住所"></div>
         <div class="form-group full"><label>開場時間メモ</label><input id="s-open-time" placeholder="例: 開演の30分前、13:30開場など"></div>
         <div class="form-group full"><label>班分け</label><input id="s-group" placeholder="Aチーム・2班・など"></div>
@@ -338,7 +343,7 @@
         <div class="form-group"><label>終了時間</label><input id="sch-end" type="time"></div>
         <div class="form-group"><label>遅刻の場合の入り時間</label><input id="sch-late" type="time"></div>
         <div class="form-group"><label>早退の場合の退出時間</label><input id="sch-early-out" type="time"></div>
-        <div class="form-group full"><label>内容</label><input id="sch-content" placeholder="通し稽古・場当たり・歌稽古など"></div>
+        <div class="form-group full"><label>内容</label><textarea id="sch-content" rows="3" placeholder="通し稽古・場当たり・歌稽古など"></textarea></div>
         <div class="form-group full"><label>メモ</label><textarea id="sch-notes" rows="2" placeholder="持ち物・注意点など"></textarea></div>
       </div>
       <div class="btn-row">
@@ -420,6 +425,27 @@ function openFlyerModal(stageId,idx){
 function switchTabById(id){const btn=document.querySelector(`.tab-btn[onclick*="'${id}'"]`);if(btn)btn.click();}
 
 // ========== STAGES ==========
+// --- 小屋入り日程管理 ---
+function addMoveInSlot(date='', time=''){
+  const list=document.getElementById('movein-slot-list');
+  const idx=Date.now();
+  const div=document.createElement('div');
+  div.className='slot-item';
+  div.dataset.idx=idx;
+  div.innerHTML=`<input type="date" value="${esc(date)}" style="flex:1"><input type="time" value="${esc(time)}" placeholder="集合時間（任意）" style="flex:1"><button type="button" class="slot-remove-btn" onclick="this.closest('.slot-item').remove()">✕</button>`;
+  list.appendChild(div);
+}
+function getMoveInSlots(){
+  return Array.from(document.querySelectorAll('#movein-slot-list .slot-item')).map(row=>{
+    const inputs=row.querySelectorAll('input');
+    return {date:inputs[0].value, time:inputs[1].value};
+  }).filter(s=>s.date);
+}
+function setMoveInSlots(slots){
+  document.getElementById('movein-slot-list').innerHTML='';
+  (slots||[]).forEach(s=>addMoveInSlot(s.date||'',s.time||''));
+}
+
 // --- 出演回フォーム管理 ---
 function addSlotInput(val=''){
   const list=document.getElementById('slot-list');
@@ -489,7 +515,8 @@ function removePendingFlyer(idx,btn){
   btn.closest('div').remove();
 }
 function resetStageForm(){
-  ['s-title','s-date-start','s-date-end','s-move-in','s-venue','s-open-time','s-group','s-notes','s-announce'].forEach(id=>document.getElementById(id).value='');
+  ['s-title','s-date-start','s-date-end','s-move-in-start','s-move-in-end','s-venue','s-open-time','s-group','s-notes','s-announce'].forEach(id=>document.getElementById(id).value='');
+  document.getElementById('movein-slot-list').innerHTML='';
   document.getElementById('s-category').value='';
   document.getElementById('s-status').value='予定';
   document.getElementById('s-ongoing').checked=false;
@@ -515,7 +542,9 @@ function saveStage(){
     category:document.getElementById('s-category').value,
     venue:document.getElementById('s-venue').value,
     ongoing:document.getElementById('s-ongoing').checked,
-    moveIn:document.getElementById('s-move-in').value,
+    moveInStart:document.getElementById('s-move-in-start').value,
+    moveInEnd:document.getElementById('s-move-in-end').value,
+    moveInSlots:getMoveInSlots(),
     openTime:document.getElementById('s-open-time').value,
     group:document.getElementById('s-group').value,
     slots:getSlots(),
@@ -538,7 +567,9 @@ function editStage(id){
   document.getElementById('s-category').value=s.category||'';
   document.getElementById('s-venue').value=s.venue||'';
   document.getElementById('s-ongoing').checked=s.ongoing||false;
-  document.getElementById('s-move-in').value=s.moveIn||'';
+  document.getElementById('s-move-in-start').value=s.moveInStart||s.moveIn||'';
+  document.getElementById('s-move-in-end').value=s.moveInEnd||'';
+  setMoveInSlots(s.moveInSlots||[]);
   document.getElementById('s-open-time').value=s.openTime||'';
   document.getElementById('s-group').value=s.group||'';
   setSlots(s.slots||[]);
@@ -579,7 +610,15 @@ function renderStages(){
           <span class="badge ${bc[s.status]||'badge-scheduled'}">${s.status}</span>${s.ongoing?'<span class="badge" style="background:#fef3c7;color:#92400e;margin-left:4px">🔄 ongoing</span>':''}${s.category?`<span class="badge" style="background:#f0fdf4;color:#166534;margin-left:4px">${s.category}</span>`:''}
           <h3 class="card-title">${esc(s.title)}</h3>
           <p class="card-date">📅 ${stageDispDate(s)}</p>
-          ${s.moveIn?`<p class="card-date">🏠 小屋入り: ${fmtD(s.moveIn)}</p>`:''}
+          ${(()=>{
+            const ms=s.moveInStart||s.moveIn||'';
+            const me=s.moveInEnd||'';
+            if(!ms)return'';
+            const range=me&&me!==ms?fmtD(ms)+' 〜 '+fmtD(me):fmtD(ms);
+            const slots=(s.moveInSlots||[]);
+            const slotHtml=slots.length?'<div style="margin-top:4px;display:flex;flex-wrap:wrap;gap:4px">'+slots.map(sl=>`<span class="slot-tag" style="background:#fef3c7;color:#92400e;border-color:#fde68a">${esc(sl.date?fmtDJP(sl.date)+(sl.time?' '+sl.time:''):(sl.label||''))}</span>`).join('')+'</div>':'';
+            return `<p class="card-date">🏠 小屋入り: ${range}</p>${slotHtml}`;
+          })()}
         </div>
         <div class="card-actions">
           <button class="icon-btn" onclick="editStage('${s.id}')">✏️</button>
