@@ -139,6 +139,17 @@
     .dash-item-sub{font-size:0.76rem;color:var(--text3);margin-top:3px;}
     .dash-item-badge{font-size:0.7rem;padding:3px 10px;border-radius:20px;white-space:nowrap;flex-shrink:0;font-weight:600;}
 
+    .cl-item-row{display:flex;align-items:center;gap:8px;padding:7px 10px;border-radius:8px;background:var(--bg3);border:1px solid var(--border);margin-bottom:5px;transition:all .18s;}
+    .cl-item-row:hover{border-color:var(--border2);}
+    .cl-item-row.checked{opacity:0.5;text-decoration:line-through;}
+    .cl-item-check{width:18px;height:18px;accent-color:var(--accent2);cursor:pointer;flex-shrink:0;}
+    .cl-item-label{flex:1;font-size:0.88rem;color:var(--text);}
+    .cl-item-category{font-size:0.68rem;padding:2px 7px;border-radius:20px;font-weight:600;flex-shrink:0;}
+    .cl-progress{height:6px;background:var(--bg3);border-radius:10px;overflow:hidden;margin:10px 0 6px;}
+    .cl-progress-bar{height:100%;background:var(--green);border-radius:10px;transition:width .3s;}
+    .cl-edit-row{display:flex;gap:6px;align-items:center;margin-bottom:5px;}
+    .cl-edit-row input{flex:1;}
+    .cl-edit-row select{width:auto;min-width:100px;}
     #img-modal{display:none;position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.8);z-index:9999;align-items:center;justify-content:center;padding:20px;}
   </style>
 </head>
@@ -168,6 +179,7 @@
       <button class="tab-btn" onclick="switchTab('auditions',this)">📋 オーディション</button>
       <button class="tab-btn" onclick="switchTab('schedule',this)">🗓️ 稽古スケジュール</button>
       <button class="tab-btn" onclick="switchTab('templates',this)">💬 テンプレ</button>
+      <button class="tab-btn" onclick="switchTab('checklist',this)">🎒 持ち物</button>
     </div>
   </div>
 
@@ -381,6 +393,36 @@
     <div id="template-cards" class="cards"></div>
   </div>
 
+  <!-- CHECKLIST -->
+  <div id="tab-checklist" class="section">
+    <div class="section-header">
+      <div class="section-title">🎒 持ち物リスト</div>
+      <button class="add-btn" onclick="createChecklist()">＋ リスト作成</button>
+    </div>
+    <div id="checklist-stage-filters" class="filter-row"></div>
+    <!-- リスト作成フォーム -->
+    <div id="checklist-form" class="form-card hidden">
+      <h3 class="form-title">新しい持ち物リスト</h3>
+      <div class="form-grid">
+        <div class="form-group full"><label>タイトル *</label><input id="cl-title" placeholder="持ち物リスト（空白でもOK）"></div>
+        <div class="form-group full"><label>公演</label><select id="cl-stage"><option value="">未設定</option></select></div>
+      </div>
+      <div style="margin-bottom:14px">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+          <label style="font-size:0.72rem;color:var(--text2);letter-spacing:0.06em;text-transform:uppercase;font-weight:500">持ち物アイテム</label>
+          <button type="button" onclick="addChecklistItem()" class="gen-btn">＋ アイテム追加</button>
+        </div>
+        <div id="cl-items-list"></div>
+      </div>
+      <div class="btn-row">
+        <button class="cancel-btn" onclick="cancelChecklistForm()">キャンセル</button>
+        <button class="save-btn" onclick="saveChecklist()">保存</button>
+      </div>
+      <input type="hidden" id="cl-editing">
+    </div>
+    <div id="checklist-cards" class="cards"></div>
+  </div>
+
 </div><!-- /app -->
 
 <!-- IMAGE MODAL -->
@@ -411,6 +453,7 @@ function switchTab(id,btn){
   if(id==='auditions')renderAuditions();
   if(id==='schedule'){populateScheduleStageSelect();renderSchedule();}
   if(id==='templates')renderTemplates();
+  if(id==='checklist'){populateChecklistStageSelect();renderChecklists();}
 }
 function toggleForm(id){document.getElementById(id).classList.toggle('hidden');}
 function cancelForm(id,fn){document.getElementById(id).classList.add('hidden');fn();}
@@ -1123,9 +1166,221 @@ function renderDashboard(){
 
 // ========== AI URL AUTO-FILL ==========
 
+// ========== CHECKLIST ==========
+const DEFAULT_ITEMS = [
+  {label:'衣装一式', category:'衣装'},
+  {label:'ハンガー', category:'衣装'},
+  {label:'衣装小物（アクセサリー等）', category:'衣装'},
+  {label:'針・糸（緊急用）', category:'衣装'},
+  {label:'鏡', category:'メイク'},
+  {label:'メイクポーチ', category:'メイク'},
+  {label:'ヘアピン・ヘアゴム', category:'メイク'},
+  {label:'ヘアスプレー', category:'メイク'},
+  {label:'台本', category:'台本'},
+  {label:'譜面', category:'台本'},
+  {label:'ペン・蛍光マーカー', category:'台本'},
+  {label:'iPad', category:'台本'},
+  {label:'水・ドリンク', category:'飲食'},
+  {label:'喉あめ・のど飴', category:'飲食'},
+  {label:'軽食・お弁当', category:'飲食'},
+  {label:'ストロー', category:'飲食'},
+  {label:'喉用加湿器', category:'飲食'},
+  {label:'小道具', category:'備品'},
+  {label:'シューズ', category:'備品'},
+  {label:'タオル', category:'備品'},
+  {label:'レジャーシート', category:'備品'},
+  {label:'ボックス', category:'備品'},
+  {label:'ウエストポーチ', category:'備品'},
+  {label:'自撮り棒', category:'備品'},
+  {label:'養生テープ', category:'備品'},
+  {label:'マジック', category:'備品'},
+  {label:'ハンディファン', category:'備品'},
+  {label:'ティッシュ', category:'備品'},
+  {label:'ゴミ袋', category:'備品'},
+  {label:'リップクリーム', category:'備品'},
+  {label:'常備薬・絆創膏', category:'備品'},
+  {label:'充電器・モバイルバッテリー', category:'備品'},
+];
+
+const CATEGORY_COLORS = {
+  '衣装':  {bg:'#fce7f3', color:'#9d174d'},
+  'メイク': {bg:'#ede9fe', color:'#4c1d95'},
+  '台本':  {bg:'#fef3c7', color:'#92400e'},
+  '飲食':  {bg:'#d1fae5', color:'#065f46'},
+  '備品':  {bg:'#e0e7ff', color:'#3730a3'},
+  'その他': {bg:'#f3f4f6', color:'#374151'},
+};
+
+function populateChecklistStageSelect(){
+  const stages = load(KEYS.stages);
+  const sel = document.getElementById('cl-stage');
+  if(!sel) return;
+  sel.innerHTML = '<option value="">未設定</option>' + stages.map(s=>`<option value="${s.id}">${esc(s.title)}</option>`).join('');
+}
+
+let clChecklistStageFilter = '全て';
+function setChecklistStageFilter(f){ clChecklistStageFilter=f; renderChecklists(); }
+
+function createChecklist(){
+  // フォームを開いてデフォルトアイテムをセット
+  populateChecklistStageSelect();
+  document.getElementById('cl-title').value = '';
+  document.getElementById('cl-stage').value = '';
+  document.getElementById('cl-editing').value = '';
+  document.querySelector('#checklist-form .form-title').textContent = '新しい持ち物リスト';
+  document.querySelector('#checklist-form .save-btn').textContent = '保存';
+  // デフォルトアイテムを展開
+  const list = document.getElementById('cl-items-list');
+  list.innerHTML = '';
+  DEFAULT_ITEMS.forEach(item => addChecklistItemRow(item.label, item.category));
+  document.getElementById('checklist-form').classList.remove('hidden');
+  document.getElementById('checklist-form').scrollIntoView({behavior:'smooth'});
+}
+
+function addChecklistItem(){
+  addChecklistItemRow('', 'その他');
+}
+
+function addChecklistItemRow(label='', category='その他'){
+  const list = document.getElementById('cl-items-list');
+  const idx = Date.now() + Math.random();
+  const catOptions = Object.keys(CATEGORY_COLORS).map(c=>`<option value="${c}"${c===category?' selected':''}>${c}</option>`).join('');
+  const div = document.createElement('div');
+  div.className = 'cl-edit-row';
+  div.dataset.idx = idx;
+  div.innerHTML = `<input type="text" value="${esc(label)}" placeholder="アイテム名"><select>${catOptions}</select><button type="button" class="slot-remove-btn" onclick="this.closest('.cl-edit-row').remove()">✕</button>`;
+  list.appendChild(div);
+}
+
+function getChecklistItems(){
+  return Array.from(document.querySelectorAll('#cl-items-list .cl-edit-row')).map(row=>{
+    const inputs = row.querySelectorAll('input,select');
+    return {label: inputs[0].value.trim(), category: inputs[1].value, checked: false};
+  }).filter(i=>i.label);
+}
+
+function cancelChecklistForm(){
+  document.getElementById('checklist-form').classList.add('hidden');
+  document.getElementById('cl-editing').value='';
+}
+
+function saveChecklist(){
+  const title = document.getElementById('cl-title').value.trim() || '持ち物リスト';
+  const items = getChecklistItems();
+  if(!items.length){ alert('アイテムを1つ以上追加してください'); return; }
+  const lists = load('sm_checklists');
+  const eid = document.getElementById('cl-editing').value;
+  const ex = eid ? lists.find(l=>l.id===eid) : null;
+  // 編集時は既存のchecked状態を引き継ぐ
+  const mergedItems = eid && ex ? items.map(item=>{
+    const old = ex.items.find(o=>o.label===item.label && o.category===item.category);
+    return {...item, checked: old ? old.checked : false};
+  }) : items;
+  const item = {id:eid||uid(), title, stageId:document.getElementById('cl-stage').value, items:mergedItems, createdAt:ex?ex.createdAt:new Date().toISOString()};
+  if(eid){const i=lists.findIndex(l=>l.id===eid);if(i>-1)lists[i]=item;}else lists.unshift(item);
+  save('sm_checklists', lists);
+  document.getElementById('checklist-form').classList.add('hidden');
+  renderChecklists();
+}
+
+function editChecklist(id){
+  const lists = load('sm_checklists');
+  const cl = lists.find(l=>l.id===id); if(!cl) return;
+  populateChecklistStageSelect();
+  document.getElementById('cl-title').value = cl.title;
+  document.getElementById('cl-stage').value = cl.stageId||'';
+  document.getElementById('cl-editing').value = id;
+  document.querySelector('#checklist-form .form-title').textContent = '✏️ 編集';
+  document.querySelector('#checklist-form .save-btn').textContent = '更新';
+  const list = document.getElementById('cl-items-list');
+  list.innerHTML = '';
+  cl.items.forEach(item => addChecklistItemRow(item.label, item.category));
+  document.getElementById('checklist-form').classList.remove('hidden');
+  document.getElementById('checklist-form').scrollIntoView({behavior:'smooth'});
+}
+
+function deleteChecklist(id){
+  if(!confirm('削除しますか？')) return;
+  save('sm_checklists', load('sm_checklists').filter(l=>l.id!==id));
+  renderChecklists();
+}
+
+function toggleChecklistItem(listId, itemIdx){
+  const lists = load('sm_checklists');
+  const cl = lists.find(l=>l.id===listId); if(!cl) return;
+  cl.items[itemIdx].checked = !cl.items[itemIdx].checked;
+  save('sm_checklists', lists);
+  renderChecklists();
+}
+
+function resetChecklist(id){
+  const lists = load('sm_checklists');
+  const cl = lists.find(l=>l.id===id); if(!cl) return;
+  cl.items.forEach(i=>i.checked=false);
+  save('sm_checklists', lists);
+  renderChecklists();
+}
+
+function renderChecklists(){
+  const lists = load('sm_checklists');
+  const stages = load(KEYS.stages);
+
+  // 公演フィルター
+  const allStageIds = [...new Set(lists.map(l=>l.stageId).filter(Boolean))];
+  const filterEl = document.getElementById('checklist-stage-filters');
+  if(filterEl){
+    filterEl.innerHTML = ['全て', ...allStageIds].map(id=>{
+      const label = id==='全て' ? '全て' : (stages.find(s=>s.id===id)?.title||id);
+      const active = clChecklistStageFilter===id;
+      return `<button class="filter-btn${active?' active':''}" onclick="setChecklistStageFilter('${id}')">${esc(label)}</button>`;
+    }).join('');
+  }
+
+  const filtered = lists.filter(l => clChecklistStageFilter==='全て' || l.stageId===clChecklistStageFilter);
+  const el = document.getElementById('checklist-cards');
+  if(!el) return;
+  if(!filtered.length){ el.innerHTML='<div class="empty">持ち物リストがありません<br><small>「＋ リスト作成」で公演ごとのリストを作れます</small></div>'; return; }
+
+  el.innerHTML = filtered.map(cl=>{
+    const stage = stages.find(s=>s.id===cl.stageId);
+    const total = cl.items.length;
+    const done = cl.items.filter(i=>i.checked).length;
+    const pct = total ? Math.round(done/total*100) : 0;
+    const allDone = done===total && total>0;
+
+    const itemsHtml = cl.items.map((item,idx)=>{
+      const cc = CATEGORY_COLORS[item.category]||CATEGORY_COLORS['その他'];
+      return `<div class="cl-item-row${item.checked?' checked':''}">
+        <input type="checkbox" class="cl-item-check" ${item.checked?'checked':''} onchange="toggleChecklistItem('${cl.id}',${idx})">
+        <span class="cl-item-label">${esc(item.label)}</span>
+        <span class="cl-item-category" style="background:${cc.bg};color:${cc.color}">${esc(item.category)}</span>
+      </div>`;
+    }).join('');
+
+    return `<div class="card" style="border-color:${allDone?'#bbf7d0':'var(--border)'}">
+      <div class="card-top">
+        <div style="flex:1">
+          <h3 class="card-title">${esc(cl.title)}</h3>
+          ${stage?`<p class="card-date">🎭 ${esc(stage.title)}</p>`:''}
+        </div>
+        <div class="card-actions">
+          <button class="icon-btn" title="リセット" onclick="resetChecklist('${cl.id}')">🔄</button>
+          <button class="icon-btn" onclick="editChecklist('${cl.id}')">✏️</button>
+          <button class="icon-btn" onclick="deleteChecklist('${cl.id}')">🗑️</button>
+        </div>
+      </div>
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:4px">
+        <div class="cl-progress" style="flex:1"><div class="cl-progress-bar" style="width:${pct}%"></div></div>
+        <span style="font-size:0.78rem;color:var(--text2);white-space:nowrap">${done}/${total} ${allDone?'✅ 完了！':''}</span>
+      </div>
+      <div style="margin-top:8px">${itemsHtml}</div>
+    </div>`;
+  }).join('');
+}
+
 // ========== EXPORT / IMPORT ==========
 function exportData(){
-  const data={version:3,exportedAt:new Date().toISOString(),stages:load(KEYS.stages),customers:load(KEYS.customers),auditions:load(KEYS.auditions),schedule:load(KEYS.schedule),templates:load(KEYS.templates)};
+  const data={version:4,exportedAt:new Date().toISOString(),stages:load(KEYS.stages),customers:load(KEYS.customers),auditions:load(KEYS.auditions),schedule:load(KEYS.schedule),templates:load(KEYS.templates),checklists:load('sm_checklists')};
   const blob=new Blob([JSON.stringify(data,null,2)],{type:'application/json'});
   const a=document.createElement('a');a.href=URL.createObjectURL(blob);
   a.download='stage-manager-'+new Date().toISOString().slice(0,10)+'.json';
@@ -1144,6 +1399,7 @@ function importData(event){
       if(data.auditions)save(KEYS.auditions,data.auditions);
       if(data.schedule)save(KEYS.schedule,data.schedule);
       if(data.templates)save(KEYS.templates,data.templates);
+      if(data.checklists)save('sm_checklists',data.checklists);
       renderDashboard();
       alert('✅ インポートが完了しました！');
     }catch{alert('❌ ファイルの読み込みに失敗しました。');}
