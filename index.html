@@ -282,6 +282,11 @@
           <select id="c-payment"><option value="">未設定</option><option>振り込み</option><option>当日窓口払い</option><option>立替(振込)</option><option>立替(paypay)</option><option>立替(手渡し)</option><option>不要</option></select>
         </div>
         <div class="form-group full"><label>差し入れメモ</label><input id="c-gift-note" placeholder="チョコレート、タオルなど"></div>
+        <div class="form-group full">
+          <label>差し入れ画像（複数可）</label>
+          <input type="file" id="c-gift-images" accept="image/*" multiple onchange="previewGiftImages(event)" style="padding:6px">
+          <div id="c-gift-preview" style="display:flex;flex-wrap:wrap;gap:8px;margin-top:8px"></div>
+        </div>
         <div class="form-group full"><label>メモ</label><textarea id="c-notes" rows="2" placeholder="席の希望・招待経緯など"></textarea></div>
       </div>
       <div class="btn-row">
@@ -457,6 +462,33 @@ function switchTab(id,btn){
 }
 function toggleForm(id){document.getElementById(id).classList.toggle('hidden');}
 function cancelForm(id,fn){document.getElementById(id).classList.add('hidden');fn();}
+function previewGiftImages(event){
+  const files=Array.from(event.target.files);if(!files.length)return;
+  if(!Array.isArray(window._cgImages))window._cgImages=[];
+  const preview=document.getElementById('c-gift-preview');
+  files.forEach(file=>{
+    const reader=new FileReader();
+    reader.onload=e=>{
+      window._cgImages.push(e.target.result);
+      const idx=window._cgImages.length-1;
+      const div=document.createElement('div');
+      div.style.cssText='position:relative;display:inline-block;';
+      div.innerHTML=`<img src="${e.target.result}" style="width:80px;height:80px;object-fit:cover;border-radius:8px;display:block"><button onclick="removeGiftImage(${idx},this)" style="position:absolute;top:3px;right:3px;background:rgba(0,0,0,0.55);color:#fff;border:none;border-radius:50%;width:20px;height:20px;font-size:0.7rem;cursor:pointer;line-height:1;display:flex;align-items:center;justify-content:center">✕</button>`;
+      preview.appendChild(div);
+    };
+    reader.readAsDataURL(file);
+  });
+}
+function removeGiftImage(idx,btn){
+  if(Array.isArray(window._cgImages))window._cgImages[idx]=null;
+  btn.closest('div').remove();
+}
+function openGiftImageModal(customerId,idx){
+  const c=load(KEYS.customers).find(x=>x.id===customerId);if(!c)return;
+  const src=(c.giftImages||[])[idx];if(!src)return;
+  document.getElementById('img-modal-src').src=src;
+  document.getElementById('img-modal').style.display='flex';
+}
 function closeImageModal(){document.getElementById('img-modal').style.display='none';}
 function openFlyerModal(stageId,idx){
   const s=load(KEYS.stages).find(x=>x.id===stageId);if(!s)return;
@@ -704,6 +736,9 @@ function onCustomerStageChange(){
 }
 function resetCustomerForm(){
   ['c-name','c-companion','c-gift-note','c-notes'].forEach(id=>document.getElementById(id).value='');
+  document.getElementById('c-gift-images').value='';
+  document.getElementById('c-gift-preview').innerHTML='';
+  window._cgImages=[];
   document.getElementById('c-count').value='1';
   ['c-contact-method','c-payment','c-stage'].forEach(id=>document.getElementById(id).value='');
   document.getElementById('c-slot').innerHTML='<option value="">未設定</option>';
@@ -727,6 +762,7 @@ function saveCustomer(){
     stageId:document.getElementById('c-stage').value,
     slot:document.getElementById('c-slot').value,
     giftNote:document.getElementById('c-gift-note').value,
+    giftImages:(Array.isArray(window._cgImages)&&window._cgImages.some(Boolean))?window._cgImages.filter(Boolean):(ex?ex.giftImages||[]:[] ),
     notes:document.getElementById('c-notes').value,
     paidDone:ex?ex.paidDone:false,
     reminderSent:ex?ex.reminderSent:false,
@@ -750,6 +786,15 @@ function editCustomer(id){
   onCustomerStageChange(); // 出演回リストを更新
   if(c.slot)document.getElementById('c-slot').value=c.slot;
   document.getElementById('c-gift-note').value=c.giftNote||'';
+  const cgPreview=document.getElementById('c-gift-preview');
+  cgPreview.innerHTML='';
+  window._cgImages=[...(c.giftImages||[])];
+  (c.giftImages||[]).forEach((src,idx)=>{
+    const div=document.createElement('div');
+    div.style.cssText='position:relative;display:inline-block;';
+    div.innerHTML=`<img src="${src}" style="width:80px;height:80px;object-fit:cover;border-radius:8px;display:block"><button onclick="removeGiftImage(${idx},this)" style="position:absolute;top:3px;right:3px;background:rgba(0,0,0,0.55);color:#fff;border:none;border-radius:50%;width:20px;height:20px;font-size:0.7rem;cursor:pointer;line-height:1;display:flex;align-items:center;justify-content:center">✕</button>`;
+    cgPreview.appendChild(div);
+  });
   document.getElementById('c-notes').value=c.notes||'';
   document.getElementById('c-editing').value=id;
   document.querySelector('#customer-form .form-title').textContent='✏️ 編集';
@@ -802,7 +847,7 @@ function renderCustomers(){
   const summary=document.getElementById('customer-summary');
   if(filtered.length){
     summary.classList.remove('hidden');
-    summary.innerHTML=`<span>👥 ${filtered.length}組/${totalPeople}名</span><span>💴 代済:${filtered.filter(c=>c.paidDone).length}</span><span>📩 リマインド:${filtered.filter(c=>c.reminderSent).length}</span><span>💛 お礼:${filtered.filter(c=>c.thanksSent).length}</span><span>🎁 ギフト:${filtered.filter(c=>c.giftBought).length}</span>`;
+    summary.innerHTML=`<span>👥 ${filtered.length}組/${totalPeople}名</span><span>💴 代済:${filtered.filter(c=>c.paidDone).length}</span><span>📩 リマインド:${filtered.filter(c=>c.reminderSent).length}</span><span>💛 お礼:${filtered.filter(c=>c.thanksSent).length}</span><span>🎁 ギフト渡:${filtered.filter(c=>c.giftBought).length}</span>`;
   }else summary.classList.add('hidden');
   const el=document.getElementById('customer-cards');
   if(!filtered.length){el.innerHTML='<div class="empty">観客情報がありません</div>';return;}
@@ -813,7 +858,7 @@ function renderCustomers(){
       {field:'paidDone',done:c.paidDone,label:'💴 代済み'},
       {field:'reminderSent',done:c.reminderSent,label:'📩 リマインド'},
       {field:'thanksSent',done:c.thanksSent,label:'💛 お礼'},
-      {field:'giftBought',done:c.giftBought,label:'🎁 プチギフト購入'},
+      {field:'giftBought',done:c.giftBought,label:'🎁 プチギフト渡し'},
     ];
     return `<div class="card" style="border-color:${allDone?'#bbf7d0':'var(--border)'}">
       <div class="card-top">
@@ -834,6 +879,7 @@ function renderCustomers(){
         ${checks.map(ch=>`<button class="check-btn" style="background:${ch.done?'#d1fae5':'var(--bg3)'};border-color:${ch.done?'#6ee7b7':'var(--border)'};color:${ch.done?'#065f46':'var(--text2)'}" onclick="toggleCustomerField('${c.id}','${ch.field}')">${ch.done?'✅':'☐'} ${ch.label}</button>`).join('')}
       </div>
       ${c.giftNote?`<p class="card-notes" style="margin-top:8px;font-size:0.78rem;color:var(--text3)">🎁 差し入れ: ${esc(c.giftNote)}</p>`:''}
+      ${(c.giftImages&&c.giftImages.length)?`<div style="display:flex;flex-wrap:wrap;gap:6px;margin-top:6px">${c.giftImages.map((src,i)=>`<img src="${src}" style="width:64px;height:64px;object-fit:cover;border-radius:7px;cursor:pointer" onclick="openGiftImageModal('${c.id}',${i})">`).join('')}</div>`:''} 
       ${c.notes?`<p class="card-notes" style="margin-top:6px">${esc(c.notes)}</p>`:''}
     </div>`;
   }).join('');
